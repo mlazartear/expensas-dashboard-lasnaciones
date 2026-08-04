@@ -1,0 +1,1432 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Dashboard - Barrio Parque Las Naciones</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0f1419; --card: #1a2029; --border: #2a323d;
+    --teal: #14b8a6; --red: #ef4444; --orange: #f59e0b; --green: #22c55e; --text: #e5e7eb; --muted: #9ca3af;
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system,"Segoe UI",Roboto,sans-serif; margin:0; padding:24px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  h2.section { font-size: 15px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin: 32px 0 12px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+  .subtitle { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+  .tabs { display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid var(--border); }
+  .tab-btn { background: none; border: none; color: var(--muted); font-size: 14px; font-weight: 600;
+    padding: 10px 18px; cursor: pointer; border-bottom: 2px solid transparent; }
+  .tab-btn.active { color: var(--text); border-bottom-color: var(--teal); }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 8px; }
+  .kpi { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+  .kpi .label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+  .kpi .value { font-size: 24px; font-weight: 600; margin-top: 6px; }
+  .kpi.red .value { color: var(--red); } .kpi.teal .value { color: var(--teal); } .kpi.green .value { color: var(--green); }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+  @media (max-width: 900px) { .grid2 { grid-template-columns: 1fr; } }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+  .card h3 { margin: 0 0 12px; font-size: 14px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 600; position: sticky; top: 0; background: var(--card); cursor: pointer; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  td.total { color: var(--red); font-weight: 600; }
+  .table-wrap { max-height: 520px; overflow-y: auto; }
+  input#search { width: 100%; padding: 8px 10px; margin-bottom: 10px; background: #11161d; border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 13px; }
+  .note { font-size: 12px; color: var(--muted); margin-top: 8px; line-height: 1.5; }
+</style>
+</head>
+<body>
+  <h1>Dashboard — Barrio Parque Las Naciones</h1>
+  <div class="subtitle">Liquidación 8/2026 · Saldo al cierre 31/08/2026</div>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="general">General</button>
+    <button class="tab-btn" data-tab="deudores">Deudores</button>
+    <button class="tab-btn" data-tab="gastos">Gastos</button>
+  </div>
+
+  <!-- ===================== TAB GENERAL ===================== -->
+  <div id="tab-general" class="tab-content active">
+
+    <h2 class="section">Cobranza del período</h2>
+    <div class="kpis">
+      <div class="kpi"><div class="label">Total a cobrar (cuota ordinaria)</div><div class="value">$205.833.916</div></div>
+      <div class="kpi green"><div class="label">Total pagado este período</div><div class="value">$183.280.680</div></div>
+      <div class="kpi teal"><div class="label">Ratio de cobranza</div><div class="value">89.0%</div></div>
+      <div class="kpi green"><div class="label">Unidades al día</div><div class="value">553</div></div>
+      <div class="kpi red"><div class="label">Unidades con deuda</div><div class="value">299</div></div>
+      <div class="kpi"><div class="label">Unidades placeholder (sin cuota)</div><div class="value">59</div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="card"><h3>A cobrar vs. pagado</h3><canvas id="chartCobranza" height="220"></canvas></div>
+      <div class="card"><h3>Al día vs. con deuda</h3><canvas id="chartEstado" height="220"></canvas></div>
+    </div>
+
+    
+  </div>
+
+  <!-- ===================== TAB DEUDORES ===================== -->
+  <div id="tab-deudores" class="tab-content">
+
+    <h2 class="section">Deuda acumulada (saldos vencidos)</h2>
+    <div class="kpis">
+      <div class="kpi"><div class="label">Total de unidades</div><div class="value">852</div></div>
+      <div class="kpi red"><div class="label">Unidades con deuda</div><div class="value">299</div></div>
+      <div class="kpi"><div class="label">% morosidad</div><div class="value">35.1%</div></div>
+      <div class="kpi red"><div class="label">Deuda de capital</div><div class="value">$321.066.553</div></div>
+      <div class="kpi"><div class="label">Intereses acumulados</div><div class="value">$53.447.838</div></div>
+      <div class="kpi teal"><div class="label">Total adeudado</div><div class="value">$374.514.391</div></div>
+    </div>
+    <h2 class="section">Análisis de deuda</h2>
+    <div class="grid2">
+      <div class="card"><h3>Top 10 deudores</h3><canvas id="chartTop10" height="220"></canvas></div>
+      <div class="card"><h3>Distribución de deuda por rango</h3><canvas id="chartBuckets" height="220"></canvas></div>
+    </div>
+
+    <div class="card" style="margin-bottom:24px;">
+      <h3>Deuda acumulada por manzana (top 10)</h3>
+      <canvas id="chartMnz" height="90"></canvas>
+    </div>
+
+    <div class="card">
+      <h3>Listado completo de deudores (299)</h3>
+      <input id="search" type="text" placeholder="Buscar por propietario, manzana o lote...">
+      <div class="table-wrap">
+        <table id="tbl">
+          <thead><tr><th>#</th><th>Mnz</th><th>Lote</th><th>Propietario</th>
+          <th class="num">Deuda</th><th class="num">Interés</th><th class="num">Total</th></tr></thead>
+          <tbody><tr>
+<td>1</td><td>90</td><td>680-D (7)</td><td>TORRA, GUSTAVO PABLO</td>
+<td class="num">$3.539.200</td><td class="num">$675.765</td>
+<td class="num total">$4.214.965</td>
+</tr><tr>
+<td>2</td><td>90</td><td>680-H (7)</td><td>R ODRIGUEZ ANIDO, PAULA TERESA</td>
+<td class="num">$3.539.200</td><td class="num">$675.765</td>
+<td class="num total">$4.214.965</td>
+</tr><tr>
+<td>3</td><td>92</td><td>9-A (7)</td><td>KENT, WALTER</td>
+<td class="num">$3.459.200</td><td class="num">$649.961</td>
+<td class="num total">$4.109.161</td>
+</tr><tr>
+<td>4</td><td>89</td><td>680-C (6)</td><td>KWON, HYUK TAE</td>
+<td class="num">$2.674.399</td><td class="num">$513.275</td>
+<td class="num total">$3.187.674</td>
+</tr><tr>
+<td>5</td><td>36</td><td>8-0 (5)</td><td>ALACAHAN, ANI</td>
+<td class="num">$2.458.201</td><td class="num">$472.652</td>
+<td class="num total">$2.930.853</td>
+</tr><tr>
+<td>6</td><td>22</td><td>8-0 (5)</td><td>COSENTINO CARLOS/ GARCIA CELIA LILIANA</td>
+<td class="num">$2.378.201</td><td class="num">$446.848</td>
+<td class="num total">$2.825.049</td>
+</tr><tr>
+<td>7</td><td>6</td><td>1-C (4)</td><td>DEZILLIO, YESSICA PAOLA</td>
+<td class="num">$2.242.000</td><td class="num">$432.030</td>
+<td class="num total">$2.674.030</td>
+</tr><tr>
+<td>8</td><td>8</td><td>2-C (4)</td><td>DEZILLIO, WALTER</td>
+<td class="num">$2.242.000</td><td class="num">$432.030</td>
+<td class="num total">$2.674.030</td>
+</tr><tr>
+<td>9</td><td>35</td><td>17-0 (84)</td><td>NIELSEN, ALFREDO</td>
+<td class="num">$2.133.901</td><td class="num">$411.719</td>
+<td class="num total">$2.545.620</td>
+</tr><tr>
+<td>10</td><td>11</td><td>14-0 (3)</td><td>NUÑEZ, SILVIA BEATRIZ</td>
+<td class="num">$1.982.559</td><td class="num">$383.282</td>
+<td class="num total">$2.365.841</td>
+</tr><tr>
+<td>11</td><td>34</td><td>3-0 (3)</td><td>LOPEZ/GIROLDI, JOSE LUIS/DANA CARINA</td>
+<td class="num">$1.982.559</td><td class="num">$383.282</td>
+<td class="num total">$2.365.841</td>
+</tr><tr>
+<td>12</td><td>36</td><td>15-0 (3)</td><td>LOISEAU/VELLON, JUAN MATIAS/PILAR</td>
+<td class="num">$1.982.559</td><td class="num">$383.282</td>
+<td class="num total">$2.365.841</td>
+</tr><tr>
+<td>13</td><td>37</td><td>20-0 (3)</td><td>MALLIE, MARIA CRISTINA</td>
+<td class="num">$1.982.559</td><td class="num">$383.282</td>
+<td class="num total">$2.365.841</td>
+</tr><tr>
+<td>14</td><td>91</td><td>2-0 (3)</td><td>SCIBILIA, PABLO FRANCISCO</td>
+<td class="num">$1.982.559</td><td class="num">$383.282</td>
+<td class="num total">$2.365.841</td>
+</tr><tr>
+<td>15</td><td>93</td><td>8-0 (3)</td><td>LOPEZ, KARINA VALERIA</td>
+<td class="num">$1.982.559</td><td class="num">$383.282</td>
+<td class="num total">$2.365.841</td>
+</tr><tr>
+<td>16</td><td>94</td><td>8-0 (3)</td><td>SILVA, GONZALO FABIAN IGNACIO</td>
+<td class="num">$1.982.559</td><td class="num">$383.282</td>
+<td class="num total">$2.365.841</td>
+</tr><tr>
+<td>17</td><td>95</td><td>3-0 (3)</td><td>SIMEONOFF, GUSTAVO ADRIAN</td>
+<td class="num">$1.982.559</td><td class="num">$383.282</td>
+<td class="num total">$2.365.841</td>
+</tr><tr>
+<td>18</td><td>95</td><td>4-0 (3)</td><td>ANDOLINA, ALFREDO MARIANO</td>
+<td class="num">$1.982.559</td><td class="num">$383.282</td>
+<td class="num total">$2.365.841</td>
+</tr><tr>
+<td>19</td><td>23</td><td>13-0 (3)</td><td>ESPINOSA HELOU, MARIANA</td>
+<td class="num">$1.902.559</td><td class="num">$357.478</td>
+<td class="num total">$2.260.037</td>
+</tr><tr>
+<td>20</td><td>38</td><td>10-0 (3)</td><td>BOSIA, FERNANDO GABRIEL</td>
+<td class="num">$1.902.559</td><td class="num">$357.478</td>
+<td class="num total">$2.260.037</td>
+</tr><tr>
+<td>21</td><td>38</td><td>15-0 (3)</td><td>CIVEIRA, HORACIO DIEGO</td>
+<td class="num">$1.902.559</td><td class="num">$357.478</td>
+<td class="num total">$2.260.037</td>
+</tr><tr>
+<td>22</td><td>36</td><td>16-A (1)</td><td>GROSSO, GABRIEL GERARDO</td>
+<td class="num">$1.816.599</td><td class="num">$346.534</td>
+<td class="num total">$2.163.133</td>
+</tr><tr>
+<td>23</td><td>3</td><td>11-A (1)</td><td>RODRIGUEZ, HECTOR</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>24</td><td>4</td><td>2-A (1)</td><td>TELLECHEA, FERNANDO DAVID</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>25</td><td>4</td><td>4-A (2)</td><td>RETAMAR, STEPHANIE ANTONELLA</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>26</td><td>4</td><td>13-0 (2)</td><td>DI PIETRANTONIO/PASCUAL, JOSE/LILIANA ESTHER</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>27</td><td>5</td><td>8-B (1)</td><td>MINNIG/MINNIG, ELIAS EMANUEL/GONZALO AGUSTÍN</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>28</td><td>5</td><td>10-A (1)</td><td>TRIOLO, SABRINA IRENE</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>29</td><td>5</td><td>10-B (1)</td><td>GRANELLA, OSVALDO JORGE</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>30</td><td>7</td><td>7-A (1)</td><td>NIELSEN, ANA MARIA</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>31</td><td>7</td><td>12-0 (1)</td><td>FERNANDEZ, FLORENCIA</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>32</td><td>8</td><td>4-B (1)</td><td>GARCIA, SERGIO ROBERTO</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>33</td><td>8</td><td>6-0 (2)</td><td>RASETTI, HORACIO RAFAE</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>34</td><td>9</td><td>2-A (1)</td><td>TREMOUILLES, JONATAN FEDERICO</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>35</td><td>9</td><td>2-B (1)</td><td>ROSENBLUM, LUCAS DANIEL</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>36</td><td>9</td><td>4-0 (1)</td><td>MARTINEZ, NELLY BEATRIZ</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>37</td><td>10</td><td>2-B (1)</td><td>AGOSTO DE SCHIAFFINO, LUISA JOSEFA</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>38</td><td>10</td><td>5-B (1)</td><td>IRAOLA, ALBERTO</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>39</td><td>12</td><td>3-B (1)</td><td>LORAY, ANY</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>40</td><td>12</td><td>9-A (1)</td><td>DELGADO, JULIA DELIA</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>41</td><td>12</td><td>11-A (1)</td><td>PROPIETARIO</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>42</td><td>12</td><td>15-A (1)</td><td>GIANNICI, MARIA DE LOS ANGELES</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>43</td><td>14</td><td>6-A (1)</td><td>CESA, ANGEL</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>44</td><td>14</td><td>19-B (1)</td><td>LANGHOFF, ALICIA IRENE</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>45</td><td>14</td><td>20-A (1)</td><td>FOGLIA, ALICIA</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>46</td><td>15</td><td>5-A (1)</td><td>BELTRAN, OSVALDO OMAR</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>47</td><td>15</td><td>17-B (1)</td><td>PORTILLO ANDREA FABIANA</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>48</td><td>16</td><td>2-A (1)</td><td>BELLETTI/CALDERON, OMAR/MONICA AMELIA</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>49</td><td>16</td><td>4-A (1)</td><td>COVIELLA, CARLOS ALBERTO</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>50</td><td>16</td><td>4-B (1)</td><td>MIRABELLA, VALERIA BEATRIZ</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>51</td><td>16</td><td>5-B (1)</td><td>PAGANI, LAUTARO AGUSTIN</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>52</td><td>16</td><td>6-A (1)</td><td>GIMENEZ, FABIAN ALEJANDRO</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>53</td><td>16</td><td>9-A (1)</td><td>FERNANDEZ, MONICA</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>54</td><td>16</td><td>11-B (1)</td><td>KILLINGER, CARLA</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>55</td><td>16</td><td>18-B (1)</td><td>MOURE, MARIA CRISTINA</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>56</td><td>17</td><td>11-A (1)</td><td>MARCHIORO, CAMILA</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>57</td><td>17</td><td>17-0 (1)</td><td>MELANY DAIANA, BENITEZ</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>58</td><td>17</td><td>24-0 (1)</td><td>PAREJA, STELLA MARIS</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>59</td><td>17</td><td>28-0 (1)</td><td>SANTORO, SUSANA BEATRIZ</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>60</td><td>18</td><td>3-0 (2)</td><td>BATISTA LILIANA</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>61</td><td>18</td><td>5-A (1)</td><td>GOMEZ, ALBERTO</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>62</td><td>18</td><td>7-B (1)</td><td>ALBERTO, LIVIO ALEJANDRO</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>63</td><td>21</td><td>7-B (1)</td><td>FRASCARELLI, HUGO</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>64</td><td>22</td><td>4-0 (1)</td><td>LOPEZ, LILIANA</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>65</td><td>22</td><td>9-B (1)</td><td>GAUNA SILVIA</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>66</td><td>25</td><td>4-0 (1)</td><td>LEMOS, EZEQUIEL</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>67</td><td>25</td><td>5-0 (1)</td><td>ANDRADE, ARIEL ESTEBAN</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>68</td><td>26</td><td>1-0 (1)</td><td>GABRIELA ELIZABETH BOROWYJ</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>69</td><td>27</td><td>6-B (1)</td><td>GIANNI, DANIEL OMAR</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>70</td><td>27</td><td>10-B (1)</td><td>GARCIA, VERONICA</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>71</td><td>28</td><td>9-0 (2)</td><td>CUARTARUOLO/ALBUSTO, FABIAN/MARIA EUGENIA</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>72</td><td>29</td><td>3-B (1)</td><td>GIMENEZ, ARIEL ADOLFO</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>73</td><td>29</td><td>4-B (1)</td><td>TALIERCIO, RODRIGO OMAR</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>74</td><td>29</td><td>7-A (1)</td><td>BERGAMO, SANDRA PAOLA</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>75</td><td>29</td><td>12-A (1)</td><td>LOVISOLO/TOGNOLOTTI, RUBEN LUIS/LAURA VIVIANA</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>76</td><td>35</td><td>11-B (1)</td><td>CARRIO, MARTIN DIEGO</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>77</td><td>36</td><td>9-A (1)</td><td>CAMARGO, ALFREDO</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>78</td><td>36</td><td>9-B (1)</td><td>RIO, GABRIEL ALEJANDRO</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>79</td><td>36</td><td>13-0 (2)</td><td>PERELMUTER, NICOLAS</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>80</td><td>38</td><td>4-0 (1)</td><td>MARINA GONZALEZ/ALEJANDRO MATIAS RODRIGUEZ</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>81</td><td>38</td><td>9-A (1)</td><td>CHUTCHURRU, PABLO DANIEL</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>82</td><td>39</td><td>17-A (1)</td><td>TABAREZ/CORREA, DARIO JOSE/ANDREA MARICEL</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>83</td><td>39</td><td>36-0 (1)</td><td>FERREYRA, JUAN CARLOS</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>84</td><td>40</td><td>10-A (1)</td><td>BOGADO, CINTIA VANESA</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>85</td><td>40</td><td>11-A (1)</td><td>MIRABELLA, HECTOR</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>86</td><td>40</td><td>16-A (1)</td><td>TROILO, CRISTIAN DARIO</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>87</td><td>40</td><td>21-0 (1)</td><td>DEPIERRE, CARLOS JAVIER</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>88</td><td>41</td><td>3-0 (2)</td><td>GAROFOLO, MARIANA ANDREA</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>89</td><td>41</td><td>10-A (1)</td><td>VAZQUEZ/CAPUCCIO, SEBASTIAN/VIRGINIA MABEL</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>90</td><td>42</td><td>3-C (1)</td><td>QUERO, PABLO FERNANDO</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>91</td><td>42</td><td>5-0 (1)</td><td>MORELLI, MATIAS ENRIQUE</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>92</td><td>42</td><td>9-0 (1)</td><td>MORELLI, MATIAS ENRIQUE</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>93</td><td>42</td><td>11-A (1)</td><td>SILVA, GONZALO FABIAN IGNACIO</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>94</td><td>90</td><td>8-A (1)</td><td>BLANCO, DIEGO</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>95</td><td>92</td><td>8-B (1)</td><td>VALOSKY CINTIA</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>96</td><td>94</td><td>3-A (1)</td><td>REINOSO, CRISTINA DEL VALLE</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>97</td><td>94</td><td>11-A (1)</td><td>COSTAGLIOLA, HUGO ALBERTO</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>98</td><td>95</td><td>6-B (1)</td><td>LOPEZ, LAURA LORENA</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>99</td><td>96</td><td>4-B (1)</td><td>COSTAS, KEVIN</td>
+<td class="num">$1.809.600</td><td class="num">$350.785</td>
+<td class="num total">$2.160.385</td>
+</tr><tr>
+<td>100</td><td>18</td><td>8-B (1)</td><td>GARCIA, PATRICIA ALICIA</td>
+<td class="num">$1.896.555</td><td class="num">$257.115</td>
+<td class="num total">$2.153.670</td>
+</tr><tr>
+<td>101</td><td>23</td><td>Y B (5)</td><td>CURIE, DANIELA</td>
+<td class="num">$1.821.028</td><td class="num">$264.616</td>
+<td class="num total">$2.085.644</td>
+</tr><tr>
+<td>102</td><td>23</td><td>17-0 (5)</td><td>EZEQUIEL MARIANI</td>
+<td class="num">$1.821.028</td><td class="num">$264.616</td>
+<td class="num total">$2.085.644</td>
+</tr><tr>
+<td>103</td><td>16</td><td>5-A (1)</td><td>UNZUE, MARIA SOLEDAD</td>
+<td class="num">$1.809.600</td><td class="num">$248.299</td>
+<td class="num total">$2.057.899</td>
+</tr><tr>
+<td>104</td><td>3</td><td>1-A (81)</td><td>ILUNDAIN, MIRTA</td>
+<td class="num">$1.723.120</td><td class="num">$334.536</td>
+<td class="num total">$2.057.656</td>
+</tr><tr>
+<td>105</td><td>3</td><td>16-B (81)</td><td>MERLINO, HORACIO ALBERTO</td>
+<td class="num">$1.723.120</td><td class="num">$334.536</td>
+<td class="num total">$2.057.656</td>
+</tr><tr>
+<td>106</td><td>3</td><td>18-B (81)</td><td>NAVARRA, MARIA ELENA</td>
+<td class="num">$1.723.120</td><td class="num">$334.536</td>
+<td class="num total">$2.057.656</td>
+</tr><tr>
+<td>107</td><td>21</td><td>17-B (81)</td><td>VOLPE, GUSTAVO ARIEL</td>
+<td class="num">$1.723.120</td><td class="num">$334.536</td>
+<td class="num total">$2.057.656</td>
+</tr><tr>
+<td>108</td><td>21</td><td>19-B (81)</td><td>SILVERA GONZALEZ, RUBEN SAUL</td>
+<td class="num">$1.723.120</td><td class="num">$334.536</td>
+<td class="num total">$2.057.656</td>
+</tr><tr>
+<td>109</td><td>21</td><td>20-B (81)</td><td>BRUNA ADRIAN</td>
+<td class="num">$1.723.120</td><td class="num">$334.536</td>
+<td class="num total">$2.057.656</td>
+</tr><tr>
+<td>110</td><td>35</td><td>19-A (81)</td><td>DJEREDJIAN VALERIA/BRUNI NELSON</td>
+<td class="num">$1.723.120</td><td class="num">$334.536</td>
+<td class="num total">$2.057.656</td>
+</tr><tr>
+<td>111</td><td>4</td><td>4-B (2)</td><td>PETRINO, LUCAS DAMIAN</td>
+<td class="num">$1.729.600</td><td class="num">$324.981</td>
+<td class="num total">$2.054.581</td>
+</tr><tr>
+<td>112</td><td>12</td><td>6-B (1)</td><td>VALEGGIANI, RUBEN Y FUOCO</td>
+<td class="num">$1.729.600</td><td class="num">$324.981</td>
+<td class="num total">$2.054.581</td>
+</tr><tr>
+<td>113</td><td>12</td><td>25-0 (2)</td><td>GUASCH, MANUEL VICENTE</td>
+<td class="num">$1.729.600</td><td class="num">$324.981</td>
+<td class="num total">$2.054.581</td>
+</tr><tr>
+<td>114</td><td>16</td><td>13-A (1)</td><td>DE NARDI/MANCINI, JUAN FRANCO/ROSA</td>
+<td class="num">$1.729.600</td><td class="num">$324.981</td>
+<td class="num total">$2.054.581</td>
+</tr><tr>
+<td>115</td><td>22</td><td>13-0 (2)</td><td>FARANNA, ANGEL SUCESION</td>
+<td class="num">$1.729.600</td><td class="num">$324.981</td>
+<td class="num total">$2.054.581</td>
+</tr><tr>
+<td>116</td><td>25</td><td>6-0 (1)</td><td>D'ALESSIO, NOELI ALEJANDRA</td>
+<td class="num">$1.729.600</td><td class="num">$324.981</td>
+<td class="num total">$2.054.581</td>
+</tr><tr>
+<td>117</td><td>27</td><td>8-B (2)</td><td>NAVARRO, FABIAN</td>
+<td class="num">$1.729.600</td><td class="num">$324.981</td>
+<td class="num total">$2.054.581</td>
+</tr><tr>
+<td>118</td><td>38</td><td>7-A (1)</td><td>EMMANUEL DOGLIOTTI</td>
+<td class="num">$1.729.600</td><td class="num">$324.981</td>
+<td class="num total">$2.054.581</td>
+</tr><tr>
+<td>119</td><td>38</td><td>7-B (2)</td><td>DEL RIO, GERARDO CLAUDIO</td>
+<td class="num">$1.729.600</td><td class="num">$324.981</td>
+<td class="num total">$2.054.581</td>
+</tr><tr>
+<td>120</td><td>39</td><td>20-A (1)</td><td>GRISPO/FISTER, MARYSOL/SEBASTIAN PABLO</td>
+<td class="num">$1.729.600</td><td class="num">$324.981</td>
+<td class="num total">$2.054.581</td>
+</tr><tr>
+<td>121</td><td>41</td><td>6-A (1)</td><td>CISMAIL/FAGA, MARIA DE LOS ANGELES/EMILIO</td>
+<td class="num">$1.729.600</td><td class="num">$324.981</td>
+<td class="num total">$2.054.581</td>
+</tr><tr>
+<td>122</td><td>93</td><td>10-A (1)</td><td>ALANIZ MARIA ALEJANDRA / CAMAÑO OMAR CESAR</td>
+<td class="num">$1.729.600</td><td class="num">$324.981</td>
+<td class="num total">$2.054.581</td>
+</tr><tr>
+<td>123</td><td>96</td><td>5-B (1)</td><td>ARANDA, MONICA KARINA</td>
+<td class="num">$1.729.600</td><td class="num">$324.981</td>
+<td class="num total">$2.054.581</td>
+</tr><tr>
+<td>124</td><td>23</td><td>1-0 (3)</td><td>OCCHIUZZI, ALDO EZEQUIEL</td>
+<td class="num">$1.684.060</td><td class="num">$278.569</td>
+<td class="num total">$1.962.629</td>
+</tr><tr>
+<td>125</td><td>95</td><td>11-0 (3)</td><td>CORPORALES, ANTONIO VICTOR MANUEL</td>
+<td class="num">$1.644.060</td><td class="num">$266.797</td>
+<td class="num total">$1.910.857</td>
+</tr><tr>
+<td>126</td><td>93</td><td>10-B (1)</td><td>CARRANZA, GABRIELA INES/ROBERTO</td>
+<td class="num">$1.614.681</td><td class="num">$245.927</td>
+<td class="num total">$1.860.608</td>
+</tr><tr>
+<td>127</td><td>21</td><td>1-0 (81)</td><td>PELOZO/LOPEZ, ANTONIO/MARINA</td>
+<td class="num">$1.635.270</td><td class="num">$195.026</td>
+<td class="num total">$1.830.296</td>
+</tr><tr>
+<td>128</td><td>23</td><td>12-0 (1)</td><td>PEREZ DE MURO, SANTIAGO GABRIEL</td>
+<td class="num">$1.577.766</td><td class="num">$248.819</td>
+<td class="num total">$1.826.585</td>
+</tr><tr>
+<td>129</td><td>35</td><td>12-B (1)</td><td>LOSANNO, ARIEL MARTIN/MAURO ADRIÁN</td>
+<td class="num">$1.534.600</td><td class="num">$254.315</td>
+<td class="num total">$1.788.915</td>
+</tr><tr>
+<td>130</td><td>29</td><td>7-B (1)</td><td>SANZ, MARIA CONCEPCION</td>
+<td class="num">$1.605.076</td><td class="num">$152.275</td>
+<td class="num total">$1.757.351</td>
+</tr><tr>
+<td>131</td><td>40</td><td>35-0 (1)</td><td>GREEN JAVIER/ MARIELA CECILIA LEEGSTRA</td>
+<td class="num">$1.507.879</td><td class="num">$246.450</td>
+<td class="num total">$1.754.329</td>
+</tr><tr>
+<td>132</td><td>94</td><td>12-A (1)</td><td>CORREA, NORBERTO</td>
+<td class="num">$1.461.215</td><td class="num">$189.596</td>
+<td class="num total">$1.650.811</td>
+</tr><tr>
+<td>133</td><td>3</td><td>2-A (1)</td><td>SCHAFER, RICARDO ANGEL</td>
+<td class="num">$1.482.260</td><td class="num">$139.036</td>
+<td class="num total">$1.621.296</td>
+</tr><tr>
+<td>134</td><td>95</td><td>9-0 (3)</td><td>SALGUEIRO, NATALIA CARLA/GOMEZ MARCELO</td>
+<td class="num">$1.385.559</td><td class="num">$207.981</td>
+<td class="num total">$1.593.540</td>
+</tr><tr>
+<td>135</td><td>26</td><td>4-0 (1)</td><td>STIGLIANO, YANINA VIVIANA</td>
+<td class="num">$1.426.400</td><td class="num">$163.186</td>
+<td class="num total">$1.589.586</td>
+</tr><tr>
+<td>136</td><td>3</td><td>14-B (1)</td><td>ZAJKO, GABRIELA ALEJANDRA</td>
+<td class="num">$1.341.288</td><td class="num">$191.295</td>
+<td class="num total">$1.532.583</td>
+</tr><tr>
+<td>137</td><td>90</td><td>3-0 (2)</td><td>BOGADO GUILLERMO/KARINA HERNANDEZ</td>
+<td class="num">$1.444.684</td><td class="num">$68.045</td>
+<td class="num total">$1.512.729</td>
+</tr><tr>
+<td>138</td><td>94</td><td>5-B (1)</td><td>PETRAITIS, ANDREA FABIANA</td>
+<td class="num">$1.317.206</td><td class="num">$187.040</td>
+<td class="num total">$1.504.246</td>
+</tr><tr>
+<td>139</td><td>3</td><td>12-A (1)</td><td>GIANELLO, JUAN</td>
+<td class="num">$1.406.747</td><td class="num">$77.337</td>
+<td class="num total">$1.484.084</td>
+</tr><tr>
+<td>140</td><td>4</td><td>26-0 (1)</td><td>ARAUJO, ALEXIS MATIAS</td>
+<td class="num">$1.375.153</td><td class="num">$96.287</td>
+<td class="num total">$1.471.440</td>
+</tr><tr>
+<td>141</td><td>41</td><td>7-B (1)</td><td>COSTILLA, HERNAN DAMIAN</td>
+<td class="num">$1.264.601</td><td class="num">$187.420</td>
+<td class="num total">$1.452.021</td>
+</tr><tr>
+<td>142</td><td>16</td><td>14-A (1)</td><td>VIGO MARIA DE LOS ANGELES/ MILOZZI LEONARDO</td>
+<td class="num">$1.264.601</td><td class="num">$174.086</td>
+<td class="num total">$1.438.687</td>
+</tr><tr>
+<td>143</td><td>42</td><td>13-A (1)</td><td>MARÍA AURELIA MICHELI/SILVIA MÓNICA BARRIENTOS</td>
+<td class="num">$1.259.602</td><td class="num">$173.382</td>
+<td class="num total">$1.432.984</td>
+</tr><tr>
+<td>144</td><td>4</td><td>25-0 (1)</td><td>MASELLI, JOSE FRANCISCO</td>
+<td class="num">$1.259.600</td><td class="num">$173.382</td>
+<td class="num total">$1.432.982</td>
+</tr><tr>
+<td>145</td><td>14</td><td>16-B (1)</td><td>PEPE, FRANCISCO JAVIER</td>
+<td class="num">$1.259.600</td><td class="num">$173.382</td>
+<td class="num total">$1.432.982</td>
+</tr><tr>
+<td>146</td><td>16</td><td>12-B (1)</td><td>FUENTES AVILA, DIGNA FABIOLA</td>
+<td class="num">$1.300.356</td><td class="num">$121.122</td>
+<td class="num total">$1.421.478</td>
+</tr><tr>
+<td>147</td><td>25</td><td>1-0 (1)</td><td>GUITLER, SERGIO DANIEL</td>
+<td class="num">$1.264.164</td><td class="num">$59.542</td>
+<td class="num total">$1.323.706</td>
+</tr><tr>
+<td>148</td><td>30</td><td>2-0 (3)</td><td>VAZQUEZ NICOLAS</td>
+<td class="num">$1.228.614</td><td class="num">$57.868</td>
+<td class="num total">$1.286.482</td>
+</tr><tr>
+<td>149</td><td>32</td><td>1-0 (3)</td><td>GAITAN, LEONARDO</td>
+<td class="num">$1.127.061</td><td class="num">$129.430</td>
+<td class="num total">$1.256.491</td>
+</tr><tr>
+<td>150</td><td>37</td><td>1-0 (1)</td><td>TINEO FLAVIA LUCIANA</td>
+<td class="num">$1.116.094</td><td class="num">$92.096</td>
+<td class="num total">$1.208.190</td>
+</tr><tr>
+<td>151</td><td>16</td><td>12-A (1)</td><td>ABARZA FUENTES, DIGNA FABIOLA</td>
+<td class="num">$1.010.565</td><td class="num">$175.681</td>
+<td class="num total">$1.186.246</td>
+</tr><tr>
+<td>152</td><td>96</td><td>4-A (1)</td><td>MILANESE, MARIA TERESA</td>
+<td class="num">$1.075.153</td><td class="num">$96.287</td>
+<td class="num total">$1.171.440</td>
+</tr><tr>
+<td>153</td><td>40</td><td>5-A (1)</td><td>ACUÑA, CLAUDIA MARCELA</td>
+<td class="num">$1.024.600</td><td class="num">$131.106</td>
+<td class="num total">$1.155.706</td>
+</tr><tr>
+<td>154</td><td>26</td><td>2-0 (2)</td><td>ALES, MARIANA / PAMELA ADRIANA</td>
+<td class="num">$1.076.655</td><td class="num">$50.710</td>
+<td class="num total">$1.127.365</td>
+</tr><tr>
+<td>155</td><td>6</td><td>7-B (1)</td><td>BORRAZAS MONICA/ MINNETTI ALDO</td>
+<td class="num">$1.028.454</td><td class="num">$91.182</td>
+<td class="num total">$1.119.636</td>
+</tr><tr>
+<td>156</td><td>22</td><td>9-A (93)</td><td>COSENTINO CARLOS/ GARCIA CELIA LILIANA</td>
+<td class="num">$891.825</td><td class="num">$167.568</td>
+<td class="num total">$1.059.393</td>
+</tr><tr>
+<td>157</td><td>15</td><td>16-A (1)</td><td>DESTEFANO/ZAJKO</td>
+<td class="num">$923.129</td><td class="num">$74.100</td>
+<td class="num total">$997.229</td>
+</tr><tr>
+<td>158</td><td>27</td><td>7-B (1)</td><td>GIMENEZ, DAMIAN JOEL</td>
+<td class="num">$883.991</td><td class="num">$91.205</td>
+<td class="num total">$975.196</td>
+</tr><tr>
+<td>159</td><td>6</td><td>3-C (3)</td><td>RIMOLI, ELIZABETH LILIANA</td>
+<td class="num">$883.497</td><td class="num">$83.252</td>
+<td class="num total">$966.749</td>
+</tr><tr>
+<td>160</td><td>30</td><td>7-0 (3)</td><td>LANGER/FERRARIS, FRANCO/MARIA</td>
+<td class="num">$868.560</td><td class="num">$81.297</td>
+<td class="num total">$949.857</td>
+</tr><tr>
+<td>161</td><td>17</td><td>27-0 (1)</td><td>RAJOY, AGOSTINA ESTEFANIA</td>
+<td class="num">$844.734</td><td class="num">$104.413</td>
+<td class="num total">$949.147</td>
+</tr><tr>
+<td>162</td><td>90</td><td>2-0 (2)</td><td>ARIEL PABLO LISTA/MARANESI LAURA ANDREA</td>
+<td class="num">$876.941</td><td class="num">$69.782</td>
+<td class="num total">$946.723</td>
+</tr><tr>
+<td>163</td><td>35</td><td>10-A (1)</td><td>GUERRERO, LUIS</td>
+<td class="num">$805.200</td><td class="num">$91.292</td>
+<td class="num total">$896.492</td>
+</tr><tr>
+<td>164</td><td>38</td><td>2-0 (2)</td><td>STEFFANOLI, ROSANA GABRIELA</td>
+<td class="num">$831.770</td><td class="num">$39.176</td>
+<td class="num total">$870.946</td>
+</tr><tr>
+<td>165</td><td>14</td><td>8-A (1)</td><td>SCALERCIO, MARCELO LUIS</td>
+<td class="num">$789.600</td><td class="num">$73.907</td>
+<td class="num total">$863.507</td>
+</tr><tr>
+<td>166</td><td>29</td><td>13-0 (1)</td><td>JUAÑUK/IGLESIAS, JAVIER JUAN ROLANDO/CAROLINA</td>
+<td class="num">$806.317</td><td class="num">$49.477</td>
+<td class="num total">$855.794</td>
+</tr><tr>
+<td>167</td><td>38</td><td>11-0 (91)</td><td>BOSIA, FERNANDO/GABRIEL</td>
+<td class="num">$713.460</td><td class="num">$134.055</td>
+<td class="num total">$847.515</td>
+</tr><tr>
+<td>168</td><td>3</td><td>5-A (1)</td><td>ACCOMAZZO, CAROLINA</td>
+<td class="num">$772.118</td><td class="num">$74.143</td>
+<td class="num total">$846.261</td>
+</tr><tr>
+<td>169</td><td>36</td><td>7-0 (5)</td><td>DE PALMA, ADRIANA NOEMI</td>
+<td class="num">$759.363</td><td class="num">$35.766</td>
+<td class="num total">$795.129</td>
+</tr><tr>
+<td>170</td><td>35</td><td>13-0 (82)</td><td>LEDESMA, ENRIQUE OMAR</td>
+<td class="num">$757.433</td><td class="num">$35.675</td>
+<td class="num total">$793.108</td>
+</tr><tr>
+<td>171</td><td>3</td><td>19-A (81)</td><td>FRANCO/URBANEJA, LORENA BREATRIZ/ALEJANDRO</td>
+<td class="num">$723.606</td><td class="num">$56.055</td>
+<td class="num total">$779.661</td>
+</tr><tr>
+<td>172</td><td>11</td><td>1-0 (9)</td><td>NUÑEZ, SILVIA BEATRIZ</td>
+<td class="num">$648.600</td><td class="num">$122.635</td>
+<td class="num total">$771.235</td>
+</tr><tr>
+<td>173</td><td>3</td><td>1-B (9)</td><td>ILUNDAIN, MIRTA</td>
+<td class="num">$648.599</td><td class="num">$121.868</td>
+<td class="num total">$770.467</td>
+</tr><tr>
+<td>174</td><td>10</td><td>3-A (9)</td><td>AGOSTO DE SCHIAFFINO, LUISA JOSEFA</td>
+<td class="num">$648.599</td><td class="num">$121.868</td>
+<td class="num total">$770.467</td>
+</tr><tr>
+<td>175</td><td>12</td><td>3-A (9)</td><td>PRILUKA, MARIANO</td>
+<td class="num">$648.599</td><td class="num">$121.868</td>
+<td class="num total">$770.467</td>
+</tr><tr>
+<td>176</td><td>12</td><td>9-B (9)</td><td>DELGADO, JULIA DELIA</td>
+<td class="num">$648.599</td><td class="num">$121.868</td>
+<td class="num total">$770.467</td>
+</tr><tr>
+<td>177</td><td>16</td><td>19-A (9)</td><td>MOURE, MARIA CRISTINA</td>
+<td class="num">$648.599</td><td class="num">$121.868</td>
+<td class="num total">$770.467</td>
+</tr><tr>
+<td>178</td><td>18</td><td>5-B (9)</td><td>GOMEZ, ALBERTO</td>
+<td class="num">$648.599</td><td class="num">$121.868</td>
+<td class="num total">$770.467</td>
+</tr><tr>
+<td>179</td><td>16</td><td>7-B (1)</td><td>PEREZ, ENRIQUE IVAN</td>
+<td class="num">$718.764</td><td class="num">$33.854</td>
+<td class="num total">$752.618</td>
+</tr><tr>
+<td>180</td><td>34</td><td>1-0 (1)</td><td>MARTINEZ, FABIAN JORGE</td>
+<td class="num">$686.793</td><td class="num">$51.355</td>
+<td class="num total">$738.148</td>
+</tr><tr>
+<td>181</td><td>3</td><td>17-A (981)</td><td>MERLINO, HORACIO ALBERTO</td>
+<td class="num">$616.171</td><td class="num">$115.775</td>
+<td class="num total">$731.946</td>
+</tr><tr>
+<td>182</td><td>36</td><td>1-0 (1)</td><td>FERRAIUOLO, EDUARDO MARIO</td>
+<td class="num">$652.899</td><td class="num">$77.653</td>
+<td class="num total">$730.552</td>
+</tr><tr>
+<td>183</td><td>40</td><td>23-0 (1)</td><td>CORREA ROBERTO</td>
+<td class="num">$658.676</td><td class="num">$68.173</td>
+<td class="num total">$726.849</td>
+</tr><tr>
+<td>184</td><td>35</td><td>9-B (1)</td><td>ACOSTA MAXIMILIANO/ ALTAMIRANO</td>
+<td class="num">$631.170</td><td class="num">$51.144</td>
+<td class="num total">$682.314</td>
+</tr><tr>
+<td>185</td><td>93</td><td>9-0 (3)</td><td>DUFFY, MARIEL</td>
+<td class="num">$582.841</td><td class="num">$64.164</td>
+<td class="num total">$647.005</td>
+</tr><tr>
+<td>186</td><td>29</td><td>4-A (1)</td><td>YAMAKATA, CHRISTIAN GABRIEL</td>
+<td class="num">$614.392</td><td class="num">$28.938</td>
+<td class="num total">$643.330</td>
+</tr><tr>
+<td>187</td><td>22</td><td>5-0 (3)</td><td>GONZALEZ, MARCELO OSVALDO</td>
+<td class="num">$581.040</td><td class="num">$40.847</td>
+<td class="num total">$621.887</td>
+</tr><tr>
+<td>188</td><td>8</td><td>1-C (3)</td><td>ALONSO, MARCELO ALBERTO</td>
+<td class="num">$579.040</td><td class="num">$40.707</td>
+<td class="num total">$619.747</td>
+</tr><tr>
+<td>189</td><td>91</td><td>8-0 (3)</td><td>CANTORE, JULIAN GABRIEL</td>
+<td class="num">$578.210</td><td class="num">$40.629</td>
+<td class="num total">$618.839</td>
+</tr><tr>
+<td>190</td><td>8</td><td>5-A (1)</td><td>BASURTE/INGA, RAMIRO JOSE/CECILIA</td>
+<td class="num">$509.640</td><td class="num">$91.553</td>
+<td class="num total">$601.193</td>
+</tr><tr>
+<td>191</td><td>37</td><td>19-0 (5)</td><td>FLORENTIN SERGIO/CHIOVARO MARIA</td>
+<td class="num">$572.072</td><td class="num">$26.945</td>
+<td class="num total">$599.017</td>
+</tr><tr>
+<td>192</td><td>26</td><td>7-0 (3)</td><td>LARROQUE, EDGARDO CESAR</td>
+<td class="num">$569.589</td><td class="num">$26.828</td>
+<td class="num total">$596.417</td>
+</tr><tr>
+<td>193</td><td>14</td><td>11-A (1)</td><td>ALES, PAMELA ADRIANA</td>
+<td class="num">$552.000</td><td class="num">$39.353</td>
+<td class="num total">$591.353</td>
+</tr><tr>
+<td>194</td><td>3</td><td>2-B (9)</td><td>SCHAFER, RICARDO ANGEL</td>
+<td class="num">$518.745</td><td class="num">$48.658</td>
+<td class="num total">$567.403</td>
+</tr><tr>
+<td>195</td><td>7</td><td>13-0 (1)</td><td>VACCAREZZA, JUAN CARLOS</td>
+<td class="num">$526.400</td><td class="num">$37.006</td>
+<td class="num total">$563.406</td>
+</tr><tr>
+<td>196</td><td>15</td><td>17-A (1)</td><td>CLAR, VIRGINIA</td>
+<td class="num">$526.400</td><td class="num">$37.006</td>
+<td class="num total">$563.406</td>
+</tr><tr>
+<td>197</td><td>15</td><td>21-0 (1)</td><td>PARDO, ELENA MERCEDES</td>
+<td class="num">$526.400</td><td class="num">$37.006</td>
+<td class="num total">$563.406</td>
+</tr><tr>
+<td>198</td><td>17</td><td>19-0 (1)</td><td>LORENA RADELAND</td>
+<td class="num">$526.400</td><td class="num">$37.006</td>
+<td class="num total">$563.406</td>
+</tr><tr>
+<td>199</td><td>42</td><td>1-B (1)</td><td>LEMOS MARTIN, NICOLAS</td>
+<td class="num">$526.400</td><td class="num">$37.006</td>
+<td class="num total">$563.406</td>
+</tr><tr>
+<td>200</td><td>18</td><td>11-A (81)</td><td>FERNANDEZ, PABLO EZEQUIEL</td>
+<td class="num">$416.712</td><td class="num">$97.061</td>
+<td class="num total">$513.773</td>
+</tr><tr>
+<td>201</td><td>19</td><td>5-0 (9)</td><td>SOFIA, PROTTI</td>
+<td class="num">$464.858</td><td class="num">$21.895</td>
+<td class="num total">$486.753</td>
+</tr><tr>
+<td>202</td><td>13</td><td>3-B (1)</td><td>RODRIGUEZ, NORMA</td>
+<td class="num">$434.600</td><td class="num">$28.423</td>
+<td class="num total">$463.023</td>
+</tr><tr>
+<td>203</td><td>14</td><td>2-B (1)</td><td>GONZALEZ, EDGARDO HECTOR</td>
+<td class="num">$392.837</td><td class="num">$37.422</td>
+<td class="num total">$430.259</td>
+</tr><tr>
+<td>204</td><td>30</td><td>6-0 (1)</td><td>RIMOLI, SERGIO</td>
+<td class="num">$383.511</td><td class="num">$18.063</td>
+<td class="num total">$401.574</td>
+</tr><tr>
+<td>205</td><td>22</td><td>18-0 (5)</td><td>CALVO ALEJANDRO JOSE</td>
+<td class="num">$378.692</td><td class="num">$17.836</td>
+<td class="num total">$396.528</td>
+</tr><tr>
+<td>206</td><td>41</td><td>10-B (2)</td><td>TORRES, MARIA LORENA</td>
+<td class="num">$373.759</td><td class="num">$21.982</td>
+<td class="num total">$395.741</td>
+</tr><tr>
+<td>207</td><td>35</td><td>8-B (4)</td><td>SORIA/IRAIZOZ, ROMINA E/MARCELO FABIAN</td>
+<td class="num">$356.415</td><td class="num">$30.168</td>
+<td class="num total">$386.583</td>
+</tr><tr>
+<td>208</td><td>96</td><td>3-A (1)</td><td>D ALESSANDRO, GISELE</td>
+<td class="num">$348.622</td><td class="num">$16.420</td>
+<td class="num total">$365.042</td>
+</tr><tr>
+<td>209</td><td>36</td><td>16-B (9)</td><td>GROSSO, GABRIEL GERARDO</td>
+<td class="num">$329.620</td><td class="num">$33.956</td>
+<td class="num total">$363.576</td>
+</tr><tr>
+<td>210</td><td>5</td><td>8-A (1)</td><td>TROMBINO/CASTRO, PABLO MAXIMILIANO/YESICA DAI</td>
+<td class="num">$350.785</td><td class="num">$0</td>
+<td class="num total">$350.785</td>
+</tr><tr>
+<td>211</td><td>20</td><td>1-0 (1)</td><td>SAYAGO/CORBAL, ANGEL ALEXIS/CLAUDIA ALEJANDR</td>
+<td class="num">$350.785</td><td class="num">$0</td>
+<td class="num total">$350.785</td>
+</tr><tr>
+<td>212</td><td>22</td><td>11-0 (1)</td><td>MAQUIEIRA/COLOMBAROLLI, GABRIEL PABLO/RITA TE</td>
+<td class="num">$350.785</td><td class="num">$0</td>
+<td class="num total">$350.785</td>
+</tr><tr>
+<td>213</td><td>29</td><td>2-A (1)</td><td>REYNOSO/MANAVELLA, NOELIA MARIA/LEANDRO AND</td>
+<td class="num">$350.785</td><td class="num">$0</td>
+<td class="num total">$350.785</td>
+</tr><tr>
+<td>214</td><td>91</td><td>4-0 (4)</td><td>IACUZZIO, CANDELA/JULIANA</td>
+<td class="num">$329.000</td><td class="num">$15.496</td>
+<td class="num total">$344.496</td>
+</tr><tr>
+<td>215</td><td>35</td><td>19-B (81)</td><td>RUSSO FREIRE ESTEVES, GRACIELA MARIA DEL ROSA</td>
+<td class="num">$334.536</td><td class="num">$0</td>
+<td class="num total">$334.536</td>
+</tr><tr>
+<td>216</td><td>37</td><td>12-0 (2)</td><td>CONTRERAS, ROXANA GABRIELA</td>
+<td class="num">$300.183</td><td class="num">$26.141</td>
+<td class="num total">$326.324</td>
+</tr><tr>
+<td>217</td><td>94</td><td>10-B (1)</td><td>MIGUEZ/DONDENI, GUSTAVO DARIO/MARCELA SUSAN</td>
+<td class="num">$324.981</td><td class="num">$0</td>
+<td class="num total">$324.981</td>
+</tr><tr>
+<td>218</td><td>41</td><td>9-B (1)</td><td>AGUT/FANETTI, CECILIA SOLEDAD/MAURO RAUL</td>
+<td class="num">$288.794</td><td class="num">$26.534</td>
+<td class="num total">$315.328</td>
+</tr><tr>
+<td>219</td><td>18</td><td>12-A (81)</td><td>SIMIELI, GABRIELA BEATRIZ</td>
+<td class="num">$298.585</td><td class="num">$14.063</td>
+<td class="num total">$312.648</td>
+</tr><tr>
+<td>220</td><td>37</td><td>6-B (1)</td><td>PROTTI SOFIA</td>
+<td class="num">$290.368</td><td class="num">$13.676</td>
+<td class="num total">$304.044</td>
+</tr><tr>
+<td>221</td><td>40</td><td>24-0 (1)</td><td>TORTI, HORACIO OSCAR</td>
+<td class="num">$263.200</td><td class="num">$37.411</td>
+<td class="num total">$300.611</td>
+</tr><tr>
+<td>222</td><td>19</td><td>6-0 (2)</td><td>IGNACIO LASSALLE/ SOFIA PROTTI</td>
+<td class="num">$278.152</td><td class="num">$13.101</td>
+<td class="num total">$291.253</td>
+</tr><tr>
+<td>223</td><td>21</td><td>7-A (1)</td><td>PICOLLO, GRACIELA ALCIRA</td>
+<td class="num">$264.200</td><td class="num">$24.782</td>
+<td class="num total">$288.982</td>
+</tr><tr>
+<td>224</td><td>39</td><td>30-0 (1)</td><td>CARIAGA/BARRETO, LUIS ELIO/ROMINA SOLEDAD</td>
+<td class="num">$263.200</td><td class="num">$25.280</td>
+<td class="num total">$288.480</td>
+</tr><tr>
+<td>225</td><td>37</td><td>8-B (1)</td><td>DIEZ ARIEL</td>
+<td class="num">$263.200</td><td class="num">$25.254</td>
+<td class="num total">$288.454</td>
+</tr><tr>
+<td>226</td><td>31</td><td>11-0 (1)</td><td>ROJAS DE SINI, NORMA ALICIA</td>
+<td class="num">$257.407</td><td class="num">$24.936</td>
+<td class="num total">$282.343</td>
+</tr><tr>
+<td>227</td><td>14</td><td>17-A (1)</td><td>MAZZA, MIGUEL ANGEL</td>
+<td class="num">$251.871</td><td class="num">$25.607</td>
+<td class="num total">$277.478</td>
+</tr><tr>
+<td>228</td><td>41</td><td>20-A (1)</td><td>BASSI, MATIAS ALEJANDRO</td>
+<td class="num">$264.400</td><td class="num">$12.463</td>
+<td class="num total">$276.863</td>
+</tr><tr>
+<td>229</td><td>6</td><td>15-0 (1)</td><td>MARTINEZ, STELLA MARIS</td>
+<td class="num">$264.200</td><td class="num">$12.444</td>
+<td class="num total">$276.644</td>
+</tr><tr>
+<td>230</td><td>37</td><td>4-0 (1)</td><td>CASTELO E HIJOS, LILIANA</td>
+<td class="num">$263.994</td><td class="num">$12.434</td>
+<td class="num total">$276.428</td>
+</tr><tr>
+<td>231</td><td>12</td><td>20-0 (1)</td><td>VELENTIN LATORRE/SERRANONE FLORENCIA BELEN</td>
+<td class="num">$263.200</td><td class="num">$12.397</td>
+<td class="num total">$275.597</td>
+</tr><tr>
+<td>232</td><td>21</td><td>8-B (1)</td><td>CONDE, ESTEBAN</td>
+<td class="num">$263.200</td><td class="num">$12.397</td>
+<td class="num total">$275.597</td>
+</tr><tr>
+<td>233</td><td>21</td><td>9-A (1)</td><td>QUINTERO DE SAROGNI, HAYDEE AURORA</td>
+<td class="num">$263.200</td><td class="num">$12.397</td>
+<td class="num total">$275.597</td>
+</tr><tr>
+<td>234</td><td>40</td><td>28-0 (1)</td><td>KLEMENT ESTELA/ MIA</td>
+<td class="num">$263.200</td><td class="num">$12.397</td>
+<td class="num total">$275.597</td>
+</tr><tr>
+<td>235</td><td>41</td><td>19-A (1)</td><td>BATTAGLIA, CARLOS ALBERTO</td>
+<td class="num">$263.200</td><td class="num">$12.397</td>
+<td class="num total">$275.597</td>
+</tr><tr>
+<td>236</td><td>92</td><td>7-A (1)</td><td>LEBRET/ DIGIANO, LEONARDO / GISELA</td>
+<td class="num">$263.200</td><td class="num">$12.397</td>
+<td class="num total">$275.597</td>
+</tr><tr>
+<td>237</td><td>41</td><td>18-A (1)</td><td>BATTAGLIA, CRISTIAN ARIEL</td>
+<td class="num">$263.122</td><td class="num">$12.393</td>
+<td class="num total">$275.515</td>
+</tr><tr>
+<td>238</td><td>41</td><td>13-0 (2)</td><td>ORENCE, JULIETA</td>
+<td class="num">$263.121</td><td class="num">$12.393</td>
+<td class="num total">$275.514</td>
+</tr><tr>
+<td>239</td><td>94</td><td>12-B (1)</td><td>RODRIGUEZ, MARIEL SILVANA</td>
+<td class="num">$262.915</td><td class="num">$12.383</td>
+<td class="num total">$275.298</td>
+</tr><tr>
+<td>240</td><td>23</td><td>15-A (1)</td><td>ANTAL / SALAS, ANTAL EVA</td>
+<td class="num">$261.910</td><td class="num">$12.336</td>
+<td class="num total">$274.246</td>
+</tr><tr>
+<td>241</td><td>12</td><td>5-B (1)</td><td>MONTERO, HORACIO MARCELINO</td>
+<td class="num">$257.940</td><td class="num">$12.149</td>
+<td class="num total">$270.089</td>
+</tr><tr>
+<td>242</td><td>39</td><td>11-A (1)</td><td>CASTRO, FERNANDO DANIEL</td>
+<td class="num">$243.421</td><td class="num">$20.575</td>
+<td class="num total">$263.996</td>
+</tr><tr>
+<td>243</td><td>26</td><td>9-0 (2)</td><td>RUSSO/GONZALEZ, LEONARDO GABRIEL MARTIN/DAN</td>
+<td class="num">$263.200</td><td class="num">$0</td>
+<td class="num total">$263.200</td>
+</tr><tr>
+<td>244</td><td>13</td><td>15-B (1)</td><td>DE LOS HEROS, LUCIANO</td>
+<td class="num">$251.243</td><td class="num">$11.834</td>
+<td class="num total">$263.077</td>
+</tr><tr>
+<td>245</td><td>39</td><td>19-A (1)</td><td>PEREZ, ALEJANDRO OMAR</td>
+<td class="num">$238.205</td><td class="num">$12.217</td>
+<td class="num total">$250.422</td>
+</tr><tr>
+<td>246</td><td>23</td><td>14-A (1)</td><td>RODRIGUEZ LIMA, JOSE ALBERTO</td>
+<td class="num">$228.626</td><td class="num">$10.768</td>
+<td class="num total">$239.394</td>
+</tr><tr>
+<td>247</td><td>91</td><td>5-0 (4)</td><td>FAGETTI, DARDO ENRIQUE</td>
+<td class="num">$221.327</td><td class="num">$10.425</td>
+<td class="num total">$231.752</td>
+</tr><tr>
+<td>248</td><td>13</td><td>18-A (1)</td><td>TIRABOSCHI, ANGEL</td>
+<td class="num">$201.891</td><td class="num">$9.509</td>
+<td class="num total">$211.400</td>
+</tr><tr>
+<td>249</td><td>26</td><td>6-0 (5)</td><td>SPEZZATTI, CORINA PAULA</td>
+<td class="num">$173.194</td><td class="num">$8.157</td>
+<td class="num total">$181.351</td>
+</tr><tr>
+<td>250</td><td>29</td><td>6-A (1)</td><td>YAMAKATA CHRISTIAN GABRIEL/ YAMAKATA PABLO AN</td>
+<td class="num">$173.382</td><td class="num">$0</td>
+<td class="num total">$173.382</td>
+</tr><tr>
+<td>251</td><td>5</td><td>12-A (6)</td><td>TROMBINO Y CASTRO, PABLO MAXIMILIANO Y YESICA</td>
+<td class="num">$166.688</td><td class="num">$0</td>
+<td class="num total">$166.688</td>
+</tr><tr>
+<td>252</td><td>17</td><td>16-A (1)</td><td>ROMANO, HUGO ABEL</td>
+<td class="num">$131.606</td><td class="num">$6.199</td>
+<td class="num total">$137.805</td>
+</tr><tr>
+<td>253</td><td>41</td><td>11-A (2)</td><td>GARCIA, DIEGO HERNAN/GUILLERMO</td>
+<td class="num">$128.620</td><td class="num">$6.058</td>
+<td class="num total">$134.678</td>
+</tr><tr>
+<td>254</td><td>21</td><td>18-B (81)</td><td>FUENSALIDA, KARINA FERNANDA</td>
+<td class="num">$122.506</td><td class="num">$5.770</td>
+<td class="num total">$128.276</td>
+</tr><tr>
+<td>255</td><td>29</td><td>1-A (1)</td><td>CURA/DUARTE, NICOLAS/GIULIANA</td>
+<td class="num">$115.270</td><td class="num">$5.429</td>
+<td class="num total">$120.699</td>
+</tr><tr>
+<td>256</td><td>7</td><td>3-A (4)</td><td>VILLALBA, LUIS RICARDO</td>
+<td class="num">$114.434</td><td class="num">$5.390</td>
+<td class="num total">$119.824</td>
+</tr><tr>
+<td>257</td><td>15</td><td>20-B (1)</td><td>SOTO, ANDREA ROXANA</td>
+<td class="num">$104.703</td><td class="num">$4.932</td>
+<td class="num total">$109.635</td>
+</tr><tr>
+<td>258</td><td>27</td><td>3-A (9)</td><td>MALLIE, MARIA CRISTINA</td>
+<td class="num">$101.827</td><td class="num">$4.796</td>
+<td class="num total">$106.623</td>
+</tr><tr>
+<td>259</td><td>21</td><td>9-B (9)</td><td>QUINTERO DE SAROGNI, HAYDEE AURORA</td>
+<td class="num">$98.700</td><td class="num">$4.649</td>
+<td class="num total">$103.349</td>
+</tr><tr>
+<td>260</td><td>96</td><td>12-0 (3)</td><td>ASTESIANO, GUILLERMO ALEJO</td>
+<td class="num">$70.562</td><td class="num">$16.708</td>
+<td class="num total">$87.270</td>
+</tr><tr>
+<td>261</td><td>22</td><td>12-0 (2)</td><td>GOMEZ EDGARDO ABEL/TARNOSKI LAURA BEATRIZ</td>
+<td class="num">$70.438</td><td class="num">$15.472</td>
+<td class="num total">$85.910</td>
+</tr><tr>
+<td>262</td><td>37</td><td>8-A (1)</td><td>CARRASCO, JUAN CARLOS</td>
+<td class="num">$79.940</td><td class="num">$3.765</td>
+<td class="num total">$83.705</td>
+</tr><tr>
+<td>263</td><td>31</td><td>1-0 (3)</td><td>ROMERO/GALEANO, CARLOS ALBERTO/GABRIELA BEA</td>
+<td class="num">$83.089</td><td class="num">$0</td>
+<td class="num total">$83.089</td>
+</tr><tr>
+<td>264</td><td>95</td><td>10-0 (3)</td><td>MARTINEZ, GONZALO</td>
+<td class="num">$71.598</td><td class="num">$3.372</td>
+<td class="num total">$74.970</td>
+</tr><tr>
+<td>265</td><td>90</td><td>6-B (1)</td><td>AVENDAÑO/RODRIGUEZ, MARCELA ELENA/GASTON RE</td>
+<td class="num">$73.907</td><td class="num">$0</td>
+<td class="num total">$73.907</td>
+</tr><tr>
+<td>266</td><td>23</td><td>14-B (9)</td><td>RODRIGUEZ LIMA, JOSE ALBERTO</td>
+<td class="num">$60.858</td><td class="num">$2.866</td>
+<td class="num total">$63.724</td>
+</tr><tr>
+<td>267</td><td>14</td><td>7-B (1)</td><td>CORBALAN, SERGIO OSCAR</td>
+<td class="num">$42.729</td><td class="num">$14.279</td>
+<td class="num total">$57.008</td>
+</tr><tr>
+<td>268</td><td>15</td><td>15-A (1)</td><td>CORBALAN, SERGIO OSCAR</td>
+<td class="num">$42.729</td><td class="num">$14.279</td>
+<td class="num total">$57.008</td>
+</tr><tr>
+<td>269</td><td>6</td><td>14-A (1)</td><td>BELGRANO GARCIA, JUAN IGNACIO</td>
+<td class="num">$12.259</td><td class="num">$25.087</td>
+<td class="num total">$37.346</td>
+</tr><tr>
+<td>270</td><td>37</td><td>5-0 (3)</td><td>DELUCA, YANINA</td>
+<td class="num">$33.976</td><td class="num">$1.600</td>
+<td class="num total">$35.576</td>
+</tr><tr>
+<td>271</td><td>36</td><td>3-0 (2)</td><td>M&V SRL, MARIN</td>
+<td class="num">$27.000</td><td class="num">$1.272</td>
+<td class="num total">$28.272</td>
+</tr><tr>
+<td>272</td><td>40</td><td>9-A (1)</td><td>BRANDI, ANDREA MARIA</td>
+<td class="num">$27.000</td><td class="num">$1.272</td>
+<td class="num total">$28.272</td>
+</tr><tr>
+<td>273</td><td>36</td><td>10-0 (3)</td><td>AGNELLO, GUILLERMO JAVIER</td>
+<td class="num">$13.480</td><td class="num">$14.106</td>
+<td class="num total">$27.586</td>
+</tr><tr>
+<td>274</td><td>41</td><td>12-B (1)</td><td>MARTINEZ/MAJUL, SEBASTIAN ALFREDO/DEBORA NAT</td>
+<td class="num">$25.101</td><td class="num">$0</td>
+<td class="num total">$25.101</td>
+</tr><tr>
+<td>275</td><td>13</td><td>4-A (1)</td><td>RIZZO, JORGE DANIEL</td>
+<td class="num">$15.193</td><td class="num">$4.881</td>
+<td class="num total">$20.074</td>
+</tr><tr>
+<td>276</td><td>37</td><td>16-0 (5)</td><td>ANTUAL, MARTA RAQUEL</td>
+<td class="num">$16.792</td><td class="num">$791</td>
+<td class="num total">$17.583</td>
+</tr><tr>
+<td>277</td><td>4</td><td>10-A (1)</td><td>ESCUDERO, PABLO HERNAN</td>
+<td class="num">$12.291</td><td class="num">$579</td>
+<td class="num total">$12.870</td>
+</tr><tr>
+<td>278</td><td>13</td><td>8-A (1)</td><td>SANCHEZ/BONETTI, ANIBAL FABIAN/MONICA ALEJAND</td>
+<td class="num">$12.397</td><td class="num">$0</td>
+<td class="num total">$12.397</td>
+</tr><tr>
+<td>279</td><td>41</td><td>25-0 (1)</td><td>TERLIMBACCO/PONCE, LAURA KARINA/GUSTAVO HER</td>
+<td class="num">$12.397</td><td class="num">$0</td>
+<td class="num total">$12.397</td>
+</tr><tr>
+<td>280</td><td>35</td><td>6-B (1)</td><td>PEREIRA ABADES/PIÑEIRO, FERNANDO/LAURA ANDRE</td>
+<td class="num">$4.967</td><td class="num">$0</td>
+<td class="num total">$4.967</td>
+</tr><tr>
+<td>281</td><td>6</td><td>7-A (1)</td><td>CIMINELLI/GAIOLI, JUAN CARLOS/ADRIANA BEATRIZ</td>
+<td class="num">$2.212</td><td class="num">$104</td>
+<td class="num total">$2.316</td>
+</tr><tr>
+<td>282</td><td>22</td><td>14-0 (1)</td><td>FELIPE, ALEJANDRO</td>
+<td class="num">$2.196</td><td class="num">$103</td>
+<td class="num total">$2.299</td>
+</tr><tr>
+<td>283</td><td>90</td><td>7-B (1)</td><td>DOMINGUEZ, DANIEL</td>
+<td class="num">$1.357</td><td class="num">$64</td>
+<td class="num total">$1.421</td>
+</tr><tr>
+<td>284</td><td>92</td><td>3-A (1)</td><td>LOVISOLO, MARIA LAURA</td>
+<td class="num">$1.309</td><td class="num">$62</td>
+<td class="num total">$1.371</td>
+</tr><tr>
+<td>285</td><td>4</td><td>23-0 (1)</td><td>GASTAÑAGA, GRACIELA INES</td>
+<td class="num">$1.256</td><td class="num">$59</td>
+<td class="num total">$1.315</td>
+</tr><tr>
+<td>286</td><td>7</td><td>7-B (1)</td><td>PURICELLI, ENRIQUE HECTOR</td>
+<td class="num">$562</td><td class="num">$26</td>
+<td class="num total">$588</td>
+</tr><tr>
+<td>287</td><td>90</td><td>7-A (9)</td><td>DOMINGUEZ, DANIEL</td>
+<td class="num">$509</td><td class="num">$24</td>
+<td class="num total">$533</td>
+</tr><tr>
+<td>288</td><td>7</td><td>7-C (1)</td><td>PARDO/PINO, RODOLFO/ANA</td>
+<td class="num">$304</td><td class="num">$14</td>
+<td class="num total">$318</td>
+</tr><tr>
+<td>289</td><td>6</td><td>14-B (1)</td><td>FAMA GONZALO EZEQUIEL /BASSO BIANCA AGOSTINA</td>
+<td class="num">$200</td><td class="num">$9</td>
+<td class="num total">$209</td>
+</tr><tr>
+<td>290</td><td>12</td><td>6-A (1)</td><td>CERVIÑO, CLAUDIA PATRICIA SUCESION</td>
+<td class="num">$200</td><td class="num">$9</td>
+<td class="num total">$209</td>
+</tr><tr>
+<td>291</td><td>40</td><td>26-0 (1)</td><td>JUAREZ, ROMINA ANDREA</td>
+<td class="num">$200</td><td class="num">$9</td>
+<td class="num total">$209</td>
+</tr><tr>
+<td>292</td><td>94</td><td>11-B (1)</td><td>CHAVES/RIO, LORENA/EZEQUIEL</td>
+<td class="num">$200</td><td class="num">$9</td>
+<td class="num total">$209</td>
+</tr><tr>
+<td>293</td><td>91</td><td>9-0 (3)</td><td>DEKMAK, DARIO</td>
+<td class="num">$63</td><td class="num">$3</td>
+<td class="num total">$66</td>
+</tr><tr>
+<td>294</td><td>4</td><td>9-B (1)</td><td>CURA/PEREZ, GUSTAVO/MARIA CRISTINA</td>
+<td class="num">$40</td><td class="num">$2</td>
+<td class="num total">$42</td>
+</tr><tr>
+<td>295</td><td>18</td><td>11-B (81)</td><td>TAMAGNO, SERGIO CARLOS</td>
+<td class="num">$40</td><td class="num">$2</td>
+<td class="num total">$42</td>
+</tr><tr>
+<td>296</td><td>18</td><td>12-B (81)</td><td>MEDRANO ARNEZ, FREDDY</td>
+<td class="num">$40</td><td class="num">$2</td>
+<td class="num total">$42</td>
+</tr><tr>
+<td>297</td><td>93</td><td>12-B (1)</td><td>ARIS, MAURICIO HERNAN Y OTROS</td>
+<td class="num">$8</td><td class="num">$0</td>
+<td class="num total">$8</td>
+</tr><tr>
+<td>298</td><td>15</td><td>20-A (1)</td><td>VITULLI/BLASCO, JOAQUIN/CRISTINA</td>
+<td class="num">$1</td><td class="num">$0</td>
+<td class="num total">$1</td>
+</tr><tr>
+<td>299</td><td>34</td><td>5-0 (1)</td><td>JUAREZ, ROMINA ANDREA</td>
+<td class="num">$1</td><td class="num">$0</td>
+<td class="num total">$1</td>
+</tr></tbody>
+        </table>
+      </div>
+      <div class="note">
+        Nota: los montos surgen de extraer texto del PDF de liquidación; en filas con nombres de propietarios muy largos hay
+        superposición de texto que puede introducir un margen de error de hasta ~15% en los totales agregados frente a las
+        cifras oficiales impresas en el PDF (TOTALES). Los valores por unidad fueron verificados puntualmente contra el documento original.
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== TAB GASTOS ===================== -->
+  <div id="tab-gastos" class="tab-content">
+
+    <h2 class="section">Gastos del período</h2>
+    <div class="kpis">
+      <div class="kpi red"><div class="label">Total de gastos del mes</div><div class="value">$178.668.227</div></div>
+      <div class="kpi"><div class="label">Seguridad (Rubro 11)</div><div class="value">40,5%</div></div>
+      <div class="kpi"><div class="label">Varios (Rubro 13)</div><div class="value">40,9%</div></div>
+      <div class="kpi teal"><div class="label">Personal (sueldos + cargas)</div><div class="value">16,3%</div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="card"><h3>Gasto por rubro</h3><canvas id="chartRubro" height="240"></canvas></div>
+      <div class="card">
+        <h3>Detalle por rubro</h3>
+        <table><thead><tr><th>Rubro</th><th class="num">Monto</th><th class="num">%</th></tr></thead>
+        <tbody><tr><td>Varios</td><td class="num">$73.021.969</td><td class="num">40.87%</td></tr><tr><td>Seguridad</td><td class="num">$72.442.199</td><td class="num">40.55%</td></tr><tr><td>Personal (sueldos + cargas sociales)</td><td class="num">$29.182.813</td><td class="num">16.33%</td></tr><tr><td>Abonos de servicios</td><td class="num">$1.587.246</td><td class="num">0.89%</td></tr><tr><td>Servicios públicos</td><td class="num">$1.291.254</td><td class="num">0.72%</td></tr><tr><td>Seguros</td><td class="num">$1.012.442</td><td class="num">0.57%</td></tr><tr><td>Gastos de administración</td><td class="num">$130.304</td><td class="num">0.07%</td></tr></tbody></table>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="card"><h3>Seguridad — detalle por proveedor ($72,4M · 40,5%)</h3><canvas id="chartSeguridad" height="260"></canvas></div>
+      <div class="card"><h3>Varios — detalle completo por proveedor ($73,0M · 40,9%)</h3><canvas id="chartVarios" height="700"></canvas></div>
+    </div>
+
+    <div class="card">
+      <div class="note">
+        Nota: los montos de "Gasto por rubro" y "Seguridad" cierran exacto contra los totales oficiales impresos en el PDF.
+        El detalle de "Varios" agrupa las facturas por proveedor (46 proveedores) y cubre 98% del rubro
+        ($71.717.245 de $73.021.969 oficiales); el 2% restante corresponde a proveedores
+        menores cuyo detalle no se pudo separar de forma 100% confiable por superposición de texto en el PDF original.
+      </div>
+    </div>
+  </div>
+
+<script>
+const textColor = '#9ca3af';
+Chart.defaults.color = textColor;
+Chart.defaults.borderColor = '#2a323d';
+
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+new Chart(document.getElementById('chartCobranza'), {
+  type: 'bar',
+  data: { labels: ["A cobrar (cuota)", "Pagado"], datasets: [{ data: [205833916, 183280680], backgroundColor: ['#9ca3af','#22c55e'] }] },
+  options: { plugins: { legend: { display: false } }, scales: { y: { ticks: { callback: v => '$' + (v/1e6).toFixed(1) + 'M' } } } }
+});
+new Chart(document.getElementById('chartEstado'), {
+  type: 'doughnut',
+  data: { labels: ["Al d\u00eda", "Con deuda"], datasets: [{ data: [553, 299], backgroundColor: ['#22c55e','#ef4444'] }] },
+  options: { plugins: { legend: { position: 'bottom' } } }
+});
+new Chart(document.getElementById('chartTop10'), {
+  type: 'bar',
+  data: { labels: ["90 680-D - TORRA, GUSTAVO PABLO", "90 680-H - R ODRIGUEZ ANIDO, PA", "92 9-A - KENT, WALTER", "89 680-C - KWON, HYUK TAE", "36 8-0 - ALACAHAN, ANI", "22 8-0 - COSENTINO CARLOS/ GA", "6 1-C - DEZILLIO, YESSICA PA", "8 2-C - DEZILLIO, WALTER", "35 17-0 - NIELSEN, ALFREDO", "11 14-0 - NU\u00d1EZ, SILVIA BEATRI"], datasets: [{ label: 'Total adeudado', data: [4214965, 4214965, 4109161, 3187674, 2930853, 2825049, 2674030, 2674030, 2545620, 2365841], backgroundColor: '#ef4444' }] },
+  options: { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { ticks: { callback: v => '$' + (v/1e6).toFixed(1) + 'M' } } } }
+});
+new Chart(document.getElementById('chartBuckets'), {
+  type: 'doughnut',
+  data: { labels: ["< $300.000", "$300.000 - $1.000.000", "$1.000.000 - $2.000.000", "> $2.000.000"], datasets: [{ data: [78, 65, 33, 123], backgroundColor: ['#14b8a6','#f59e0b','#f97316','#ef4444'] }] },
+  options: { plugins: { legend: { position: 'bottom' } } }
+});
+new Chart(document.getElementById('chartMnz'), {
+  type: 'bar',
+  data: { labels: ["16", "3", "36", "12", "38", "90", "40", "29", "22", "35"], datasets: [{ label: 'Deuda total', data: [26965056, 16667054, 15886097, 14837531, 14668467, 13125628, 12883113, 12542881, 11717202, 11650576], backgroundColor: '#14b8a6' }] },
+  options: { plugins: { legend: { display: false } }, scales: { y: { ticks: { callback: v => '$' + (v/1e6).toFixed(1) + 'M' } } } }
+});
+
+new Chart(document.getElementById('chartRubro'), {
+  type: 'doughnut',
+  data: { labels: ["Varios", "Seguridad", "Personal (sueldos + cargas sociales)", "Abonos de servicios", "Servicios p\u00fablicos", "Seguros", "Gastos de administraci\u00f3n"],
+    datasets: [{ data: [73021969, 72442199, 29182813, 1587246, 1291254, 1012442, 130304],
+    backgroundColor: ['#ef4444','#f59e0b','#14b8a6','#3b82f6','#a855f7','#22c55e','#f97316'] }] },
+  options: { plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
+    tooltip: { callbacks: { label: c => c.label + ': $' + c.raw.toLocaleString('es-AR') } } } }
+});
+new Chart(document.getElementById('chartSeguridad'), {
+  type: 'bar',
+  data: { labels: ["MAG Seguridad Privada SRL - Seguridad privada", "Ministerio de Seguridad Prov. Bs As - Seguridad provincial", "Cresmani Andr\u00e9s E. - Cerco el\u00e9ctrico (centrales de alarma)", "Fiberquil SRL - Mantenimiento preventivo", "Axin SRL - Cuota facial acceso Francia", "Ministerio de Seguridad - Diferencia", "Cresmani Andr\u00e9s E. - Cerco el\u00e9ctrico (materiales)", "Fiberquil SRL - C\u00e1mara seguridad", "Cresmani Andr\u00e9s E. - Cerco el\u00e9ctrico (mantenimiento)", "Castillo Jorge Luis - Alarma", "MAG Seguridad Privada SRL - Nota de cr\u00e9dito"], datasets: [{ data: [53096111, 10353456, 3500000, 3431144, 2670472, 856788, 731000, 444092, 365000, 100000, -3105864], backgroundColor: '#3b82f6' }] },
+  options: { indexAxis: 'y', plugins: { legend: { display: false } },
+    scales: { x: { ticks: { callback: v => '$' + (v/1e6).toFixed(1) + 'M' } }, y: { ticks: { font: { size: 10 } } } } }
+});
+new Chart(document.getElementById('chartVarios'), {
+  type: 'bar',
+  data: { labels: ["BAJO, CRISTIAN JAVIER - SERVICIO RECOLECCION HOJAS RAMAS Y P", "FERNANDEZ PEDRO - TOYOTA HILUX DOMINIO PCM797", "LEIVA CRISTIAN DAVID - SERVICIO", "IODO VINELLI - CUOTA 6 MUTUO USD 3.000 A $ 1.505", "NAVARRO JUAN CARLOS - SERVICIO", "AMERICA 210 S.A - COMBUSTIBLE Y LUBRICANTES, Pr COMBUSTIBLE ", "RADIO CARRAL, JOSE LUIS - HERRERIA, A CUENTA ARREGLO CARRO..", "PAGELLA DIEGO MARTIN - ALQUILER BRAZO ARTICULADO", "EL SOL SA - CUOTA 6 MOTONIVELADORA USD 1.800 A $ 1.505", "RAYMONDO, EMANUEL - FLETE", "GISSARA, MIGUEL ANGEL - MATERIALES", "HELP 24 HORAS S.R.L - AREA PROTEGIDA", "SALGADO JESICA ELIZABET - HONORARIOS PROFESIONALES", "RUIZ LUCAS AGUSTIN - REPARACION RODADO (3 fact.)", "SIMA CONVAR PARTES PIEZAS Y ACCESORIOS S.R.L - CANON LOCATIV", "COOP DE TRABAJ CARTONEROS UNIDOS DE BROWN - SERVICIO DE RECO", "CARRANZA MARGARITA AMPARO - LEASING CUOTA 7", "MARIANO PITA - REGISTRO AUTOMOTOR SAN VICENTE", "RISCAM SRL - COMBUSTIBLE Y LUBRICANTES", "FERNANDEZ INSUA S.A - RESPUESTOS MAQUINARIA", "PEDROZO MARCELO HUGO - REPARACION MAQUINARIA", "BROWN MARCELA - HONORARIOS PROFESIONALES", "GONZALEZ, FAVIO HERNAN - MATERIALES (2 fact.)", "PARCESEPE JOSE LUIS - VARIOS (4 fact.)", "LYP SRL - RED FUTBOL", "MAGNOLUZ SRL - MATERIALES (2 fact.)", "FIGUEROA, DEBORAH MARIELA - SERVICIO AGUA _ DISPENSER, SERVI", "TESI, MARIO LEANDRO - VARIOS", "GONZALEZ, JORGE OSCAR - REPUESTOS", "FERREIRO NICOLAS HECTOR - BOLSONES", "BRILTI SRL - VOLQUETES (2 fact.)", "CORBALAN AYLEN - SERVICIO", "ZAPOLNISKOF, CECILIA ANALIA - ALQUILER BA\u00d1OS QUIMICOS", "PELOZO JOSE RAMON - FC.00002-00013377, FC.00002-00013305 (2 ", "VIVIANA LUNA - LIMPIEZA ADMINISTRACION", "OSORIO SERGIO DANIEL - CONOS VIALES", "SCHULMEISTER NATALIA ELISABET - MATERIALES (2 fact.)", "RAS SRL - MATERIALES", "GONZALEZ RAMOS WALTER JAVIER - MATERIALES (3 fact.)", "INDRIERI JOSE ROBERTO - MATERIALES", "DISTRIBUIDORA DE RESPUESTOS PESADOS - VARIOS", "GINI MARIA MARTA - HONORARIOS PROFESIONALES", "ROSSI RODAMIENTOS SRL - VARIOS", "ARIAS HERNAN - MATERIALES", "ANDRIUOLO ISMAEL - ARTICULOS DE LIMPIEZA (2 fact.)", "PEREYRA HORACIO - VARIOS"], datasets: [{ data: [16031459, 12170800, 5146500, 4515000, 3427500, 3235097, 2940000, 2750000, 2709000, 2450000, 1611157, 1476550, 965000, 937157, 831600, 774843, 755000, 729540, 711700, 709912, 700000, 600000, 552896, 467400, 390000, 379894, 370000, 350000, 299521, 295000, 290400, 270000, 269093, 266900, 260500, 200000, 190309, 126964, 101210, 98336, 72600, 70000, 62000, 53777, 52629, 50000], backgroundColor: '#f59e0b' }] },
+  options: { indexAxis: 'y', plugins: { legend: { display: false } },
+    scales: { x: { ticks: { callback: v => '$' + (v/1e6).toFixed(1) + 'M' } }, y: { ticks: { font: { size: 9 } } } } }
+});
+
+document.getElementById('search').addEventListener('input', function() {
+  const q = this.value.toLowerCase();
+  document.querySelectorAll('#tbl tbody tr').forEach(tr => {
+    tr.style.display = tr.textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
+});
+document.querySelectorAll('#tbl th').forEach((th, idx) => {
+  th.addEventListener('click', () => {
+    const tbody = document.querySelector('#tbl tbody');
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    const isNum = idx >= 4;
+    let asc = th.dataset.asc !== 'true';
+    th.dataset.asc = asc;
+    rows.sort((a,b) => {
+      let av = a.children[idx].textContent.trim();
+      let bv = b.children[idx].textContent.trim();
+      if (isNum) { av = parseFloat(av.replace(/[^0-9-]/g,'')) || 0; bv = parseFloat(bv.replace(/[^0-9-]/g,'')) || 0; }
+      if (av < bv) return asc ? -1 : 1;
+      if (av > bv) return asc ? 1 : -1;
+      return 0;
+    });
+    rows.forEach(r => tbody.appendChild(r));
+  });
+});
+</script>
+</body>
+</html>
