@@ -232,34 +232,57 @@
     <h1>Evolución mensual</h1>
     <div class="subtitle">Barrio Parque Las Naciones · comparativa entre liquidaciones 1/2026 a 8/2026 — cómo evolucionan lo reclamado, el arrastre de deuda, la cobranza y la morosidad.</div>
 
-    <div class="grid2">
-      <div class="card"><h3>Total a cobrar vs. cobrado por período</h3><canvas id="chartEvolucion" height="240"></canvas></div>
-      <div class="card"><h3>Ratio de cobranza por período</h3><canvas id="chartRatioEvolucion" height="240"></canvas></div>
+    <div class="tabs">
+      <button class="tab-btn etab-btn active" data-etab="general">General</button>
+      <button class="tab-btn etab-btn" data-etab="morosidad">Morosidad</button>
+      <button class="tab-btn etab-btn" data-etab="gastos">Gastos</button>
     </div>
 
-    <div class="grid2">
-      <div class="card"><h3>Mora acumulada vs. recuperado por período</h3><canvas id="chartMoraEvolucion" height="240"></canvas></div>
-      <div class="card"><h3>Unidades al día vs. con deuda por período</h3><canvas id="chartEstadoEvolucion" height="240"></canvas></div>
+    <!-- ---------- EVOLUCIÓN · GENERAL ---------- -->
+    <div id="etab-general" class="tab-content etab-content active">
+      <div class="grid2">
+        <div class="card"><h3>Total a cobrar vs. cobrado por período</h3><canvas id="chartEvolucion" height="240"></canvas></div>
+        <div class="card"><h3>Ratio de cobranza por período</h3><canvas id="chartRatioEvolucion" height="240"></canvas></div>
+      </div>
+
+      <div class="card">
+        <h3>Detalle por período</h3>
+        <table>
+          <thead><tr><th>Período</th><th class="num">Total a cobrar</th><th class="num">Cobrado</th>
+          <th class="num">Ratio cobranza</th><th class="num">Mora acumulada</th><th class="num">Recuperado</th>
+          <th class="num">Al día</th><th class="num">Con deuda</th></tr></thead>
+          <tbody id="tblEvolucion"></tbody>
+        </table>
+        <div class="note">
+          Nota: por el corte de imputación de AdminProp, los pagos de una liquidación se informan recién en la siguiente.
+          "Cobrado" y "Recuperado" muestran lo pagado de la expensa y de la mora de <em>ese</em> período específico
+          (no lo que ingresó ese mes por facturas de otros meses), por eso el último período figura sin dato: se sabrá
+          con la próxima liquidación.
+        </div>
+      </div>
     </div>
 
-    <div class="card" style="margin-bottom:24px;">
-      <h3>Gastos vs. ingresos cobrados por período</h3>
-      <canvas id="chartGastosIngresos" height="140"></canvas>
-    </div>
-
-    <div class="card">
-      <h3>Detalle por período</h3>
-      <table>
-        <thead><tr><th>Período</th><th class="num">Total a cobrar</th><th class="num">Cobrado</th>
-        <th class="num">Ratio cobranza</th><th class="num">Mora acumulada</th><th class="num">Recuperado</th>
-        <th class="num">Al día</th><th class="num">Con deuda</th></tr></thead>
-        <tbody id="tblEvolucion"></tbody>
-      </table>
+    <!-- ---------- EVOLUCIÓN · MOROSIDAD ---------- -->
+    <div id="etab-morosidad" class="tab-content etab-content">
+      <div class="grid2">
+        <div class="card"><h3>Mora acumulada vs. recuperado por período</h3><canvas id="chartMoraEvolucion" height="240"></canvas></div>
+        <div class="card"><h3>Unidades al día vs. con deuda por período</h3><canvas id="chartEstadoEvolucion" height="240"></canvas></div>
+      </div>
       <div class="note">
-        Nota: por el corte de imputación de AdminProp, los pagos de una liquidación se informan recién en la siguiente.
-        "Cobrado" y "Recuperado" muestran lo pagado de la expensa y de la mora de <em>ese</em> período específico
-        (no lo que ingresó ese mes por facturas de otros meses), por eso el último período figura sin dato: se sabrá
-        con la próxima liquidación.
+        Nota: la mora acumulada es la deuda de capital + intereses al cierre de cada liquidación; "Recuperado" es lo
+        cobrado de esa mora específica, informado en la liquidación siguiente.
+      </div>
+    </div>
+
+    <!-- ---------- EVOLUCIÓN · GASTOS ---------- -->
+    <div id="etab-gastos" class="tab-content etab-content">
+      <div class="card" style="margin-bottom:24px;">
+        <h3>Gastos vs. ingresos cobrados por período</h3>
+        <canvas id="chartGastosIngresos" height="140"></canvas>
+      </div>
+      <div class="note">
+        Nota: "Ingresos cobrados" es todo lo que ingresó en caja ese mes según la propia liquidación (no está corrido
+        al mes siguiente como en las otras pestañas), para compararlo con los gastos de ese mismo mes.
       </div>
     </div>
 
@@ -273,13 +296,23 @@ const textColor = '#9ca3af';
 Chart.defaults.color = textColor;
 Chart.defaults.borderColor = '#2a323d';
 
-document.querySelectorAll('.tab-btn').forEach(btn => {
+document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
   btn.addEventListener('click', () => {
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    document.querySelectorAll('.tab-btn[data-tab]').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content:not(.etab-content)').forEach(c => c.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
     // charts created while their tab was hidden get sized to ~0px; fix it up now that it's visible
+    Object.values(Chart.instances || {}).forEach(ch => ch.resize());
+  });
+});
+
+document.querySelectorAll('.etab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.etab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.etab-content').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('etab-' + btn.dataset.etab).classList.add('active');
     Object.values(Chart.instances || {}).forEach(ch => ch.resize());
   });
 });
