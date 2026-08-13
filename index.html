@@ -47,20 +47,27 @@
     <button class="tab-btn active" data-tab="general">General</button>
     <button class="tab-btn" data-tab="deudores">Deudores</button>
     <button class="tab-btn" data-tab="gastos">Gastos</button>
-    <button class="tab-btn" data-tab="cargos">Cargos Mensuales</button>
+    <button class="tab-btn" data-tab="evolucion">Evolución</button>
   </div>
 
   <!-- ===================== TAB GENERAL ===================== -->
   <div id="tab-general" class="tab-content active">
 
     <h2 class="section">Cobranza del período</h2>
+    <div class="kpis" style="max-width:420px; margin-bottom:20px;">
+      <div class="kpi">
+        <div class="label">Período</div>
+        <select id="periodoSelect" style="width:100%; margin-top:6px; padding:8px; background:#11161d; border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:15px; font-weight:600;"></select>
+      </div>
+    </div>
+
     <div class="kpis">
-      <div class="kpi"><div class="label">Total a cobrar (cuota ordinaria)</div><div class="value">$205.833.916</div></div>
-      <div class="kpi green"><div class="label">Total pagado este período</div><div class="value">$183.280.680</div></div>
-      <div class="kpi teal"><div class="label">Ratio de cobranza</div><div class="value">89.0%</div></div>
-      <div class="kpi green"><div class="label">Unidades al día</div><div class="value">553</div></div>
-      <div class="kpi red"><div class="label">Unidades con deuda</div><div class="value">299</div></div>
-      <div class="kpi"><div class="label">Unidades placeholder (sin cuota)</div><div class="value">59</div></div>
+      <div class="kpi" id="kpiCobrar"><div class="label">Total a cobrar (cargo del período)</div><div class="value">-</div></div>
+      <div class="kpi green" id="kpiPagado"><div class="label">Total pagado este período</div><div class="value">-</div></div>
+      <div class="kpi teal" id="kpiRatio"><div class="label">Ratio de cobranza</div><div class="value">-</div></div>
+      <div class="kpi green" id="kpiAlDia"><div class="label">Unidades al día</div><div class="value">-</div></div>
+      <div class="kpi red" id="kpiConDeuda"><div class="label">Unidades con deuda</div><div class="value">-</div></div>
+      <div class="kpi" id="kpiSinCuota"><div class="label">Unidades placeholder (sin cuota)</div><div class="value">-</div></div>
     </div>
 
     <div class="grid2">
@@ -68,7 +75,23 @@
       <div class="card"><h3>Al día vs. con deuda</h3><canvas id="chartEstado" height="220"></canvas></div>
     </div>
 
-    
+    <div class="card">
+      <h3>Listado por unidad — <span id="cargoTablaTitulo"></span></h3>
+      <input id="searchCargos" type="text" placeholder="Buscar por propietario, manzana o lote...">
+      <div class="table-wrap">
+        <table id="tblCargos">
+          <thead><tr><th>Mnz</th><th>Lote</th><th>Propietario</th>
+          <th class="num">C. CAT.</th><th class="num">C. SOCIAL</th><th class="num">C. FACIAL/VARIOS</th>
+          <th class="num">Cargo del período</th><th class="num">Deuda</th><th>Estado</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="note">
+        Nota: los montos surgen de extraer texto de los PDF de liquidación mensual (AdminProp). En filas con nombres de
+        propietarios muy largos hubo superposición de texto en el PDF original; los totales agregados fueron validados
+        contra las cifras oficiales de cada liquidación (cargo &lt; 0,3% de diferencia, deuda &lt; 3%).
+      </div>
+    </div>
   </div>
 
   <!-- ===================== TAB DEUDORES ===================== -->
@@ -1343,47 +1366,35 @@
     </div>
   </div>
 
-  <!-- ===================== TAB CARGOS MENSUALES ===================== -->
-  <div id="tab-cargos" class="tab-content">
+  <!-- ===================== TAB EVOLUCIÓN ===================== -->
+  <div id="tab-evolucion" class="tab-content">
 
-    <h2 class="section">Cargos facturados por mes</h2>
+    <h2 class="section">Evolución mensual (1/2026 - 8/2026)</h2>
     <div class="subtitle" style="margin-top:-10px;">
-      Cargo del período (C. CAT + C. SOCIAL + C. FACIAL/VARIOS) por unidad. No incluye deuda acumulada de períodos anteriores.
-    </div>
-
-    <div class="kpis" style="max-width:420px;">
-      <div class="kpi">
-        <div class="label">Período</div>
-        <select id="periodoSelect" style="width:100%; margin-top:6px; padding:8px; background:#11161d; border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:15px; font-weight:600;"></select>
-      </div>
-    </div>
-
-    <div class="kpis">
-      <div class="kpi teal"><div class="label">Total facturado del período</div><div class="value" id="cargoTotalPeriodo">-</div></div>
-      <div class="kpi"><div class="label">C. Categoría</div><div class="value" id="cargoCat">-</div></div>
-      <div class="kpi"><div class="label">C. Social</div><div class="value" id="cargoSoc">-</div></div>
-      <div class="kpi"><div class="label">C. Facial / Varios</div><div class="value" id="cargoVar">-</div></div>
+      Comparativa entre períodos: cuánto se facturó, cuánto se cobró y cómo evolucionó la morosidad mes a mes.
     </div>
 
     <div class="grid2">
-      <div class="card"><h3>Evolución del total facturado (1/2026 - 8/2026)</h3><canvas id="chartEvolucion" height="220"></canvas></div>
-      <div class="card"><h3>Cargo por manzana (top 10 del período)</h3><canvas id="chartCargoMnz" height="220"></canvas></div>
+      <div class="card"><h3>A cobrar vs. pagado por período</h3><canvas id="chartEvolucion" height="240"></canvas></div>
+      <div class="card"><h3>Ratio de cobranza por período</h3><canvas id="chartRatioEvolucion" height="240"></canvas></div>
+    </div>
+
+    <div class="card" style="margin-bottom:24px;">
+      <h3>Unidades al día vs. con deuda por período</h3>
+      <canvas id="chartEstadoEvolucion" height="140"></canvas>
     </div>
 
     <div class="card">
-      <h3>Listado por unidad — <span id="cargoTablaTitulo"></span></h3>
-      <input id="searchCargos" type="text" placeholder="Buscar por propietario, manzana o lote...">
-      <div class="table-wrap">
-        <table id="tblCargos">
-          <thead><tr><th>Mnz</th><th>Lote</th><th>Propietario</th>
-          <th class="num">C. CAT.</th><th class="num">C. SOCIAL</th><th class="num">C. FACIAL/VARIOS</th><th class="num">Total del período</th></tr></thead>
-          <tbody></tbody>
-        </table>
-      </div>
+      <h3>Detalle por período</h3>
+      <table>
+        <thead><tr><th>Período</th><th class="num">Total a cobrar</th><th class="num">Total pagado</th>
+        <th class="num">Ratio cobranza</th><th class="num">Al día</th><th class="num">Con deuda</th><th class="num">Sin cuota</th></tr></thead>
+        <tbody id="tblEvolucion"></tbody>
+      </table>
       <div class="note">
-        Nota: los montos surgen de extraer texto de los PDF de liquidación mensual. En filas con nombres de propietarios muy
-        largos puede haber superposición de texto en el PDF original; los totales agregados fueron validados contra la fila
-        TOTALES de cada liquidación (diferencia &lt; 0,3%).
+        Nota: "Total pagado" surge de los ingresos por pagos (en término, adeudados e intereses) informados en cada
+        liquidación. El estado de cada unidad (al día / con deuda) se calculó comparando su deuda registrada al cierre
+        de cada período (precisión validada contra los totales oficiales de cada PDF, diferencia &lt; 3%).
       </div>
     </div>
   </div>
@@ -1400,19 +1411,11 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    // charts created while their tab was hidden get sized to ~0px; fix it up now that it's visible
+    Object.values(Chart.instances || {}).forEach(ch => ch.resize());
   });
 });
 
-new Chart(document.getElementById('chartCobranza'), {
-  type: 'bar',
-  data: { labels: ["A cobrar (cuota)", "Pagado"], datasets: [{ data: [205833916, 183280680], backgroundColor: ['#9ca3af','#22c55e'] }] },
-  options: { plugins: { legend: { display: false } }, scales: { y: { ticks: { callback: v => '$' + (v/1e6).toFixed(1) + 'M' } } } }
-});
-new Chart(document.getElementById('chartEstado'), {
-  type: 'doughnut',
-  data: { labels: ["Al d\u00eda", "Con deuda"], datasets: [{ data: [553, 299], backgroundColor: ['#22c55e','#ef4444'] }] },
-  options: { plugins: { legend: { position: 'bottom' } } }
-});
 new Chart(document.getElementById('chartTop10'), {
   type: 'bar',
   data: { labels: ["90 680-D - TORRA, GUSTAVO PABLO", "90 680-H - R ODRIGUEZ ANIDO, PA", "92 9-A - KENT, WALTER", "89 680-C - KWON, HYUK TAE", "36 8-0 - ALACAHAN, ANI", "22 8-0 - COSENTINO CARLOS/ GA", "6 1-C - DEZILLIO, YESSICA PA", "8 2-C - DEZILLIO, WALTER", "35 17-0 - NIELSEN, ALFREDO", "11 14-0 - NU\u00d1EZ, SILVIA BEATRI"], datasets: [{ label: 'Total adeudado', data: [4214965, 4214965, 4109161, 3187674, 2930853, 2825049, 2674030, 2674030, 2545620, 2365841], backgroundColor: '#ef4444' }] },
@@ -1475,8 +1478,9 @@ document.querySelectorAll('#tbl th').forEach((th, idx) => {
   });
 });
 
-/* ===================== CARGOS MENSUALES ===================== */
+/* ===================== GENERAL (fusionado con selector de período) ===================== */
 const fmt = n => '$' + Math.round(n).toLocaleString('es-AR');
+const estadoLabel = { al_dia: 'Al día', con_deuda: 'Con deuda', sin_cuota: 'Sin cuota' };
 const periodoSelect = document.getElementById('periodoSelect');
 CARGOS_DATA.periods.forEach(p => {
   const opt = document.createElement('option');
@@ -1485,42 +1489,46 @@ CARGOS_DATA.periods.forEach(p => {
 });
 periodoSelect.value = CARGOS_DATA.periods[CARGOS_DATA.periods.length - 1];
 
-let chartCargoMnz = null;
+let chartCobranza = null, chartEstado = null;
 
 function renderCargosTabla(rows) {
   const tbody = document.querySelector('#tblCargos tbody');
   tbody.innerHTML = rows.map(r => {
-    const [mnz, lote, prop, cat, soc, varv] = r;
-    const total = cat + soc + varv;
+    const [mnz, lote, prop, cat, soc, varv, deuda, estado] = r;
+    const cargo = cat + soc + varv;
+    const badgeColor = estado === 'con_deuda' ? 'var(--red)' : (estado === 'al_dia' ? 'var(--green)' : 'var(--muted)');
     return `<tr><td>${mnz}</td><td>${lote}</td><td>${prop}</td>
       <td class="num">${fmt(cat)}</td><td class="num">${fmt(soc)}</td><td class="num">${fmt(varv)}</td>
-      <td class="num total">${fmt(total)}</td></tr>`;
+      <td class="num total">${fmt(cargo)}</td><td class="num">${fmt(deuda)}</td>
+      <td style="color:${badgeColor}; font-weight:600;">${estadoLabel[estado]}</td></tr>`;
   }).join('');
 }
 
 function renderPeriodo() {
   const p = periodoSelect.value;
   const rows = CARGOS_DATA.byPeriod[p];
-  let cat = 0, soc = 0, varr = 0;
-  const byMnz = {};
-  rows.forEach(([mnz, lote, prop, c, s, v]) => {
-    cat += c; soc += s; varr += v;
-    byMnz[mnz] = (byMnz[mnz] || 0) + c + s + v;
-  });
-  const total = cat + soc + varr;
+  const s = CARGOS_DATA.summary[p];
 
-  document.getElementById('cargoTotalPeriodo').textContent = fmt(total);
-  document.getElementById('cargoCat').textContent = fmt(cat);
-  document.getElementById('cargoSoc').textContent = fmt(soc);
-  document.getElementById('cargoVar').textContent = fmt(varr);
+  document.querySelector('#kpiCobrar .value').textContent = fmt(s.totalCobrar);
+  document.querySelector('#kpiPagado .value').textContent = fmt(s.totalPagado);
+  document.querySelector('#kpiRatio .value').textContent = s.ratioCobranza + '%';
+  document.querySelector('#kpiAlDia .value').textContent = s.alDia;
+  document.querySelector('#kpiConDeuda .value').textContent = s.conDeuda;
+  document.querySelector('#kpiSinCuota .value').textContent = s.sinCuota;
   document.getElementById('cargoTablaTitulo').textContent = 'Liquidación ' + p + ' (' + rows.length + ' unidades)';
 
-  const topMnz = Object.entries(byMnz).sort((a,b) => b[1]-a[1]).slice(0,10);
-  if (chartCargoMnz) chartCargoMnz.destroy();
-  chartCargoMnz = new Chart(document.getElementById('chartCargoMnz'), {
+  if (chartCobranza) chartCobranza.destroy();
+  chartCobranza = new Chart(document.getElementById('chartCobranza'), {
     type: 'bar',
-    data: { labels: topMnz.map(x => 'Mnz ' + x[0]), datasets: [{ label: 'Cargo total', data: topMnz.map(x => x[1]), backgroundColor: '#14b8a6' }] },
+    data: { labels: ["A cobrar", "Pagado"], datasets: [{ data: [s.totalCobrar, s.totalPagado], backgroundColor: ['#9ca3af','#22c55e'] }] },
     options: { plugins: { legend: { display: false } }, scales: { y: { ticks: { callback: v => '$' + (v/1e6).toFixed(1) + 'M' } } } }
+  });
+
+  if (chartEstado) chartEstado.destroy();
+  chartEstado = new Chart(document.getElementById('chartEstado'), {
+    type: 'doughnut',
+    data: { labels: ["Al día", "Con deuda", "Sin cuota"], datasets: [{ data: [s.alDia, s.conDeuda, s.sinCuota], backgroundColor: ['#22c55e','#ef4444','#6b7280'] }] },
+    options: { plugins: { legend: { position: 'bottom' } } }
   });
 
   renderCargosTabla(rows);
@@ -1534,14 +1542,48 @@ document.getElementById('searchCargos').addEventListener('input', function() {
   });
 });
 
-const evolucionData = CARGOS_DATA.periods.map(p => CARGOS_DATA.byPeriod[p].reduce((s, r) => s + r[3] + r[4] + r[5], 0));
-new Chart(document.getElementById('chartEvolucion'), {
-  type: 'line',
-  data: { labels: CARGOS_DATA.periods, datasets: [{ label: 'Total facturado', data: evolucionData, borderColor: '#14b8a6', backgroundColor: 'rgba(20,184,166,0.15)', fill: true, tension: 0.2 }] },
-  options: { plugins: { legend: { display: false } }, scales: { y: { ticks: { callback: v => '$' + (v/1e6).toFixed(0) + 'M' } } } }
-});
-
 renderPeriodo();
+
+/* ===================== EVOLUCIÓN (comparativa entre períodos) ===================== */
+document.getElementById('tblEvolucion').innerHTML = CARGOS_DATA.periods.map(p => {
+  const s = CARGOS_DATA.summary[p];
+  return `<tr><td>${p}</td><td class="num">${fmt(s.totalCobrar)}</td><td class="num">${fmt(s.totalPagado)}</td>
+    <td class="num">${s.ratioCobranza}%</td><td class="num">${s.alDia}</td><td class="num total">${s.conDeuda}</td><td class="num">${s.sinCuota}</td></tr>`;
+}).join('');
+
+let evolucionCharted = false;
+function initEvolucionCharts() {
+  if (evolucionCharted) return;
+  evolucionCharted = true;
+  const evoCobrar = CARGOS_DATA.periods.map(p => CARGOS_DATA.summary[p].totalCobrar);
+  const evoPagado = CARGOS_DATA.periods.map(p => CARGOS_DATA.summary[p].totalPagado);
+  const evoRatio = CARGOS_DATA.periods.map(p => CARGOS_DATA.summary[p].ratioCobranza);
+  const evoAlDia = CARGOS_DATA.periods.map(p => CARGOS_DATA.summary[p].alDia);
+  const evoConDeuda = CARGOS_DATA.periods.map(p => CARGOS_DATA.summary[p].conDeuda);
+
+  new Chart(document.getElementById('chartEvolucion'), {
+    type: 'line',
+    data: { labels: CARGOS_DATA.periods, datasets: [
+      { label: 'A cobrar', data: evoCobrar, borderColor: '#9ca3af', backgroundColor: 'rgba(156,163,175,0.1)', fill: true, tension: 0.2 },
+      { label: 'Pagado', data: evoPagado, borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.15)', fill: true, tension: 0.2 },
+    ] },
+    options: { plugins: { legend: { position: 'bottom' } }, scales: { y: { ticks: { callback: v => '$' + (v/1e6).toFixed(0) + 'M' } } } }
+  });
+  new Chart(document.getElementById('chartRatioEvolucion'), {
+    type: 'line',
+    data: { labels: CARGOS_DATA.periods, datasets: [{ label: 'Ratio de cobranza', data: evoRatio, borderColor: '#14b8a6', backgroundColor: 'rgba(20,184,166,0.15)', fill: true, tension: 0.2 }] },
+    options: { plugins: { legend: { display: false } }, scales: { y: { ticks: { callback: v => v + '%' } } } }
+  });
+  new Chart(document.getElementById('chartEstadoEvolucion'), {
+    type: 'bar',
+    data: { labels: CARGOS_DATA.periods, datasets: [
+      { label: 'Al día', data: evoAlDia, backgroundColor: '#22c55e' },
+      { label: 'Con deuda', data: evoConDeuda, backgroundColor: '#ef4444' },
+    ] },
+    options: { plugins: { legend: { position: 'bottom' } }, scales: { x: { stacked: true }, y: { stacked: true } } }
+  });
+}
+document.querySelector('[data-tab="evolucion"]').addEventListener('click', initEvolucionCharts);
 </script>
 </body>
 </html>
