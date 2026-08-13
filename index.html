@@ -88,33 +88,35 @@
   <!-- ===================== TAB GENERAL ===================== -->
   <div id="tab-general" class="tab-content active">
 
-    <h2 class="section">Cobranza del período</h2>
+    <h2 class="section">Cobranza de la expensa del período</h2>
 
     <div class="kpis">
-      <div class="kpi red" id="kpiCobrar"><div class="label">Total a cobrar</div><div class="value">-</div></div>
-      <div class="kpi green" id="kpiPagado"><div class="label">Cobrado en el período</div><div class="value">-</div></div>
-      <div class="kpi teal" id="kpiRatio"><div class="label">Ratio de cobranza <span id="kpiRatioNota" style="text-transform:none; font-weight:400;"></span></div><div class="value">-</div></div>
+      <div class="kpi" id="kpiCobrar"><div class="label">Total a cobrar (expensa del mes)</div><div class="value">-</div></div>
+      <div class="kpi green" id="kpiPagado"><div class="label">Cobrado de esta expensa <span id="kpiPagadoNota" style="text-transform:none; font-weight:400;"></span></div><div class="value">-</div></div>
+      <div class="kpi teal" id="kpiRatio"><div class="label">Ratio de cobranza</div><div class="value">-</div></div>
       <div class="kpi green" id="kpiAlDia"><div class="label">Unidades al día</div><div class="value">-</div></div>
       <div class="kpi red" id="kpiConDeuda"><div class="label">Unidades con deuda</div><div class="value">-</div></div>
       <div class="kpi" id="kpiSinCuota"><div class="label">Unidades placeholder (sin cuota)</div><div class="value">-</div></div>
     </div>
 
-    <h2 class="section">Composición del total a cobrar</h2>
-    <div class="kpis">
-      <div class="kpi" id="kpiCargoMes"><div class="label">Cargo del mes (expensa)</div><div class="value">-</div></div>
-      <div class="kpi red" id="kpiDeudaAcum"><div class="label">Deuda de períodos anteriores</div><div class="value">-</div></div>
-      <div class="kpi orange" id="kpiIntereses"><div class="label">Intereses por mora</div><div class="value">-</div></div>
-    </div>
-
     <div class="note" id="notaImputacion" style="margin:-4px 0 20px;"></div>
 
+    <h2 class="section">Morosidad acumulada</h2>
+    <div class="kpis">
+      <div class="kpi red" id="kpiMoraTotal"><div class="label">Mora acumulada (deuda + intereses)</div><div class="value">-</div></div>
+      <div class="kpi green" id="kpiMoraRecuperada"><div class="label">Recuperado de la mora <span id="kpiMoraNota" style="text-transform:none; font-weight:400;"></span></div><div class="value">-</div></div>
+      <div class="kpi orange" id="kpiRatioMora"><div class="label">% de la mora recuperado</div><div class="value">-</div></div>
+    </div>
+
+    <div class="note" id="notaMora" style="margin:-4px 0 20px;"></div>
+
     <div class="grid2">
-      <div class="card"><h3>Composición del total a cobrar</h3><canvas id="chartComposicion" height="220"></canvas></div>
+      <div class="card"><h3>Expensa facturada vs. cobrada</h3><canvas id="chartComposicion" height="220"></canvas></div>
       <div class="card"><h3>Al día vs. con deuda</h3><canvas id="chartEstado" height="220"></canvas></div>
     </div>
 
     <div class="card" style="margin-bottom:24px;">
-      <h3>Reclamado vs. cobrado</h3>
+      <h3>Mora acumulada vs. recuperado este período</h3>
       <canvas id="chartCobranza" height="110"></canvas>
     </div>
 
@@ -455,40 +457,46 @@ function renderPeriodo() {
   const s = CARGOS_DATA.summary[p];
 
   document.querySelector('#kpiCobrar .value').textContent = fmt(s.totalCobrar);
-  document.querySelector('#kpiPagado .value').textContent = fmt(s.pagos);
+  document.querySelector('#kpiPagado .value').textContent = s.cobradoTermino === null ? 'Sin datos aún' : fmt(s.cobradoTermino);
+  document.getElementById('kpiPagadoNota').textContent = s.cobradoEn ? '(informado en liq. ' + s.cobradoEn + ')' : '';
   document.querySelector('#kpiRatio .value').textContent = s.ratioCobranza === null ? '—' : s.ratioCobranza + '%';
-  document.getElementById('kpiRatioNota').textContent = s.saldoAnterior === null ? '(primer período)' : '(sobre saldo anterior)';
   document.querySelector('#kpiAlDia .value').textContent = s.alDia;
   document.querySelector('#kpiConDeuda .value').textContent = s.conDeuda;
   document.querySelector('#kpiSinCuota .value').textContent = s.sinCuota;
-  document.querySelector('#kpiCargoMes .value').textContent = fmt(s.cargoMes);
-  document.querySelector('#kpiDeudaAcum .value').textContent = fmt(s.deudaAcum);
-  document.querySelector('#kpiIntereses .value').textContent = fmt(s.intereses);
   document.getElementById('cargoTablaTitulo').textContent = 'Liquidación ' + p + ' (' + rows.length + ' unidades)';
 
-  const pctArrastre = s.totalCobrar ? Math.round((s.deudaAcum + s.intereses) / s.totalCobrar * 100) : 0;
-  document.getElementById('notaImputacion').innerHTML = s.saldoAnterior === null
-    ? 'Primer período cargado: no hay saldo anterior contra el cual medir la cobranza.'
-    : 'Durante la liquidación ' + p + ' ingresaron ' + fmt(s.pagos) + ', que se aplicaron contra el saldo anterior de '
-      + fmt(s.saldoAnterior) + ' (ratio ' + s.ratioCobranza + '%). De ese ingreso, ' + fmt(s.pagosTermino)
-      + ' fue pago de expensas del período, ' + fmt(s.pagosAdeudados) + ' recupero de deuda vieja y '
-      + fmt(s.pagosInteres) + ' intereses. Del total a cobrar, el <strong>' + pctArrastre
-      + '%</strong> es arrastre de períodos anteriores (deuda + intereses).';
+  document.getElementById('notaImputacion').innerHTML = s.cobradoEn
+    ? 'Por el corte de imputación de AdminProp, los pagos de la liquidación ' + p + ' se informan recién en la liquidación '
+      + 'siguiente (' + s.cobradoEn + '). "Cobrado de esta expensa" es lo que efectivamente se pagó de <em>esta</em> factura.'
+    : 'Los pagos de la liquidación ' + p + ' se informarán en la liquidación siguiente, que todavía no está cargada. '
+      + 'Por eso aún no hay dato de cobranza para este período.';
+
+  document.querySelector('#kpiMoraTotal .value').textContent = fmt(s.moraTotal);
+  document.querySelector('#kpiMoraRecuperada .value').textContent = s.moraRecuperada === null ? 'Sin datos aún' : fmt(s.moraRecuperada);
+  document.getElementById('kpiMoraNota').textContent = s.cobradoEn ? '(informado en liq. ' + s.cobradoEn + ')' : '';
+  document.querySelector('#kpiRatioMora .value').textContent = s.ratioMora === null ? '—' : s.ratioMora + '%';
+  document.getElementById('notaMora').innerHTML = s.cobradoEn
+    ? 'La mora acumulada al cierre de ' + p + ' es ' + fmt(s.deudaAcum) + ' de deuda de capital + ' + fmt(s.intereses)
+      + ' de intereses. En ' + s.cobradoEn + ' se recuperaron ' + fmt(s.cobradoDeuda) + ' de deuda vieja y '
+      + fmt(s.cobradoInteres) + ' de intereses (el resto sigue impago o se recupera en meses posteriores).'
+    : 'Todavía no hay datos de recupero de mora para este período.';
 
   if (chartComposicion) chartComposicion.destroy();
   chartComposicion = new Chart(document.getElementById('chartComposicion'), {
-    type: 'doughnut',
-    data: { labels: ["Cargo del mes", "Deuda anterior", "Intereses"],
-      datasets: [{ data: [s.cargoMes, s.deudaAcum, s.intereses], backgroundColor: ['#14b8a6','#ef4444','#f59e0b'] }] },
-    options: { plugins: { legend: { position: 'bottom' },
-      tooltip: { callbacks: { label: c => c.label + ': ' + fmt(c.raw) } } } }
+    type: 'bar',
+    data: { labels: ["Facturado", "Cobrado", "Pendiente"],
+      datasets: [{ data: [s.cargoMes, s.cobradoTermino ?? 0, s.cobradoTermino === null ? 0 : Math.max(s.cargoMes - s.cobradoTermino, 0)],
+      backgroundColor: ['#9ca3af','#22c55e','#ef4444'] }] },
+    options: { plugins: { legend: { display: false },
+      tooltip: { callbacks: { label: c => fmt(c.raw) } } },
+      scales: { y: { ticks: { callback: v => '$' + (v/1e6).toFixed(1) + 'M' } } } }
   });
 
   if (chartCobranza) chartCobranza.destroy();
   chartCobranza = new Chart(document.getElementById('chartCobranza'), {
     type: 'bar',
-    data: { labels: ["Saldo anterior (reclamado)", "Cobrado en el período", "Total a cobrar (nuevo)"],
-      datasets: [{ data: [s.saldoAnterior ?? 0, s.pagos, s.totalCobrar], backgroundColor: ['#9ca3af','#22c55e','#ef4444'] }] },
+    data: { labels: ["Mora acumulada", "Recuperado este período"],
+      datasets: [{ data: [s.moraTotal, s.moraRecuperada ?? 0], backgroundColor: ['#ef4444','#22c55e'] }] },
     options: { indexAxis: 'y', plugins: { legend: { display: false },
       tooltip: { callbacks: { label: c => fmt(c.raw) } } },
       scales: { x: { ticks: { callback: v => '$' + (v/1e6).toFixed(0) + 'M' } } } }
