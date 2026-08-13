@@ -80,15 +80,15 @@
   </div>
 
   <div class="tabs">
-    <button class="tab-btn active" data-tab="general">General</button>
+    <button class="tab-btn active" data-tab="general">Expensa</button>
     <button class="tab-btn" data-tab="deudores">Morosidad</button>
     <button class="tab-btn" data-tab="gastos">Gastos</button>
   </div>
 
-  <!-- ===================== TAB GENERAL ===================== -->
+  <!-- ===================== TAB EXPENSA ===================== -->
   <div id="tab-general" class="tab-content active">
 
-    <h2 class="section">Cobranza de la expensa del período</h2>
+    <h2 class="section">Expensa del período</h2>
 
     <div class="kpis">
       <div class="kpi" id="kpiCobrar"><div class="label">Total a cobrar (expensa del mes)</div><div class="value">-</div></div>
@@ -101,23 +101,9 @@
 
     <div class="note" id="notaImputacion" style="margin:-4px 0 20px;"></div>
 
-    <h2 class="section">Morosidad acumulada</h2>
-    <div class="kpis">
-      <div class="kpi red" id="kpiMoraTotal"><div class="label">Mora acumulada (deuda + intereses)</div><div class="value">-</div></div>
-      <div class="kpi green" id="kpiMoraRecuperada"><div class="label">Recuperado de la mora <span id="kpiMoraNota" style="text-transform:none; font-weight:400;"></span></div><div class="value">-</div></div>
-      <div class="kpi orange" id="kpiRatioMora"><div class="label">% de la mora recuperado</div><div class="value">-</div></div>
-    </div>
-
-    <div class="note" id="notaMora" style="margin:-4px 0 20px;"></div>
-
     <div class="grid2">
       <div class="card"><h3>Expensa facturada vs. cobrada</h3><canvas id="chartComposicion" height="220"></canvas></div>
       <div class="card"><h3>Al día vs. con deuda</h3><canvas id="chartEstado" height="220"></canvas></div>
-    </div>
-
-    <div class="card" style="margin-bottom:24px;">
-      <h3>Mora acumulada vs. recuperado este período</h3>
-      <canvas id="chartCobranza" height="110"></canvas>
     </div>
 
     <div class="card">
@@ -126,16 +112,16 @@
       <div class="table-wrap">
         <table id="tblCargos">
           <thead><tr><th>Mnz</th><th>Lote</th><th>Propietario</th>
-          <th class="num">Cargo del mes</th><th class="num">Deuda anterior</th><th class="num">Intereses</th>
-          <th class="num">Total a pagar</th><th>Estado</th></tr></thead>
+          <th class="num">Cargo del mes</th><th>Estado</th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
       <div class="note">
-        Nota: "Total a pagar" replica la columna TOTAL del PDF (deuda anterior + intereses + cargo del mes). Los KPI
-        agregados de arriba usan las cifras oficiales del ESTADO PATRIMONIAL de cada liquidación; el detalle por unidad
-        surge de extraer la tabla del PDF, donde los nombres largos se superponen con las columnas numéricas, por lo que
-        la suma del listado puede diferir hasta ~2% del total oficial.
+        Nota: "Cargo del mes" es la expensa ordinaria facturada en esta liquidación (categoría + social + facial/varios),
+        sin deuda de períodos anteriores. Los KPI agregados de arriba usan las cifras oficiales del ESTADO PATRIMONIAL
+        de cada liquidación; el detalle por unidad surge de extraer la tabla del PDF, donde los nombres largos se
+        superponen con las columnas numéricas, por lo que la suma del listado puede diferir hasta ~2% del total oficial.
+        Para ver la deuda acumulada y los intereses de cada unidad, andá a la pestaña Morosidad.
       </div>
     </div>
   </div>
@@ -302,6 +288,7 @@ document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
     document.querySelectorAll('.tab-content:not(.etab-content)').forEach(c => c.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    if (btn.dataset.tab === 'gastos' && periodoSelect.value === '8/2026') initProveedoresCharts();
     // charts created while their tab was hidden get sized to ~0px; fix it up now that it's visible
     Object.values(Chart.instances || {}).forEach(ch => ch.resize());
   });
@@ -326,19 +313,6 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
     if (btn.dataset.view === 'evolucion') initEvolucionCharts();
     Object.values(Chart.instances || {}).forEach(ch => ch.resize());
   });
-});
-
-new Chart(document.getElementById('chartSeguridad'), {
-  type: 'bar',
-  data: { labels: ["MAG Seguridad Privada SRL - Seguridad privada", "Ministerio de Seguridad Prov. Bs As - Seguridad provincial", "Cresmani Andr\u00e9s E. - Cerco el\u00e9ctrico (centrales de alarma)", "Fiberquil SRL - Mantenimiento preventivo", "Axin SRL - Cuota facial acceso Francia", "Ministerio de Seguridad - Diferencia", "Cresmani Andr\u00e9s E. - Cerco el\u00e9ctrico (materiales)", "Fiberquil SRL - C\u00e1mara seguridad", "Cresmani Andr\u00e9s E. - Cerco el\u00e9ctrico (mantenimiento)", "Castillo Jorge Luis - Alarma", "MAG Seguridad Privada SRL - Nota de cr\u00e9dito"], datasets: [{ data: [53096111, 10353456, 3500000, 3431144, 2670472, 856788, 731000, 444092, 365000, 100000, -3105864], backgroundColor: '#3b82f6' }] },
-  options: { indexAxis: 'y', plugins: { legend: { display: false } },
-    scales: { x: { ticks: { callback: v => '$' + (v/1e6).toFixed(1) + 'M' } }, y: { ticks: { font: { size: 10 } } } } }
-});
-new Chart(document.getElementById('chartVarios'), {
-  type: 'bar',
-  data: { labels: ["BAJO, CRISTIAN JAVIER - SERVICIO RECOLECCION HOJAS RAMAS Y P", "FERNANDEZ PEDRO - TOYOTA HILUX DOMINIO PCM797", "LEIVA CRISTIAN DAVID - SERVICIO", "IODO VINELLI - CUOTA 6 MUTUO USD 3.000 A $ 1.505", "NAVARRO JUAN CARLOS - SERVICIO", "AMERICA 210 S.A - COMBUSTIBLE Y LUBRICANTES, Pr COMBUSTIBLE ", "RADIO CARRAL, JOSE LUIS - HERRERIA, A CUENTA ARREGLO CARRO..", "PAGELLA DIEGO MARTIN - ALQUILER BRAZO ARTICULADO", "EL SOL SA - CUOTA 6 MOTONIVELADORA USD 1.800 A $ 1.505", "RAYMONDO, EMANUEL - FLETE", "GISSARA, MIGUEL ANGEL - MATERIALES", "HELP 24 HORAS S.R.L - AREA PROTEGIDA", "SALGADO JESICA ELIZABET - HONORARIOS PROFESIONALES", "RUIZ LUCAS AGUSTIN - REPARACION RODADO (3 fact.)", "SIMA CONVAR PARTES PIEZAS Y ACCESORIOS S.R.L - CANON LOCATIV", "COOP DE TRABAJ CARTONEROS UNIDOS DE BROWN - SERVICIO DE RECO", "CARRANZA MARGARITA AMPARO - LEASING CUOTA 7", "MARIANO PITA - REGISTRO AUTOMOTOR SAN VICENTE", "RISCAM SRL - COMBUSTIBLE Y LUBRICANTES", "FERNANDEZ INSUA S.A - RESPUESTOS MAQUINARIA", "PEDROZO MARCELO HUGO - REPARACION MAQUINARIA", "BROWN MARCELA - HONORARIOS PROFESIONALES", "GONZALEZ, FAVIO HERNAN - MATERIALES (2 fact.)", "PARCESEPE JOSE LUIS - VARIOS (4 fact.)", "LYP SRL - RED FUTBOL", "MAGNOLUZ SRL - MATERIALES (2 fact.)", "FIGUEROA, DEBORAH MARIELA - SERVICIO AGUA _ DISPENSER, SERVI", "TESI, MARIO LEANDRO - VARIOS", "GONZALEZ, JORGE OSCAR - REPUESTOS", "FERREIRO NICOLAS HECTOR - BOLSONES", "BRILTI SRL - VOLQUETES (2 fact.)", "CORBALAN AYLEN - SERVICIO", "ZAPOLNISKOF, CECILIA ANALIA - ALQUILER BA\u00d1OS QUIMICOS", "PELOZO JOSE RAMON - FC.00002-00013377, FC.00002-00013305 (2 ", "VIVIANA LUNA - LIMPIEZA ADMINISTRACION", "OSORIO SERGIO DANIEL - CONOS VIALES", "SCHULMEISTER NATALIA ELISABET - MATERIALES (2 fact.)", "RAS SRL - MATERIALES", "GONZALEZ RAMOS WALTER JAVIER - MATERIALES (3 fact.)", "INDRIERI JOSE ROBERTO - MATERIALES", "DISTRIBUIDORA DE RESPUESTOS PESADOS - VARIOS", "GINI MARIA MARTA - HONORARIOS PROFESIONALES", "ROSSI RODAMIENTOS SRL - VARIOS", "ARIAS HERNAN - MATERIALES", "ANDRIUOLO ISMAEL - ARTICULOS DE LIMPIEZA (2 fact.)", "PEREYRA HORACIO - VARIOS"], datasets: [{ data: [16031459, 12170800, 5146500, 4515000, 3427500, 3235097, 2940000, 2750000, 2709000, 2450000, 1611157, 1476550, 965000, 937157, 831600, 774843, 755000, 729540, 711700, 709912, 700000, 600000, 552896, 467400, 390000, 379894, 370000, 350000, 299521, 295000, 290400, 270000, 269093, 266900, 260500, 200000, 190309, 126964, 101210, 98336, 72600, 70000, 62000, 53777, 52629, 50000], backgroundColor: '#f59e0b' }] },
-  options: { indexAxis: 'y', plugins: { legend: { display: false } },
-    scales: { x: { ticks: { callback: v => '$' + (v/1e6).toFixed(1) + 'M' } }, y: { ticks: { font: { size: 9 } } } } }
 });
 
 document.getElementById('search').addEventListener('input', function() {
@@ -377,7 +351,7 @@ CARGOS_DATA.periods.forEach(p => {
 });
 periodoSelect.value = CARGOS_DATA.periods[CARGOS_DATA.periods.length - 1];
 
-let chartCobranza = null, chartEstado = null, chartComposicion = null;
+let chartEstado = null, chartComposicion = null;
 let chartTop10 = null, chartBuckets = null, chartMnz = null, chartRubro = null;
 
 /* ---------- DEUDORES (por período) ---------- */
@@ -475,7 +449,31 @@ function renderGastos(p) {
       tooltip: { callbacks: { label: c => c.label + ': ' + fmt(c.raw) } } } }
   });
 
-  document.getElementById('detalleProveedores').style.display = (p === '8/2026') ? '' : 'none';
+  const mostrar = p === '8/2026';
+  document.getElementById('detalleProveedores').style.display = mostrar ? '' : 'none';
+  // only build these charts once the Gastos tab is actually visible; a canvas with a
+  // fully hidden ancestor (display:none two levels up) can't acquire a 2d context yet
+  if (mostrar && document.getElementById('tab-gastos').classList.contains('active')) {
+    initProveedoresCharts();
+  }
+}
+
+let proveedoresCharted = false;
+function initProveedoresCharts() {
+  if (proveedoresCharted) return;
+  new Chart(document.getElementById('chartSeguridad'), {
+    type: 'bar',
+    data: { labels: ["MAG Seguridad Privada SRL - Seguridad privada", "Ministerio de Seguridad Prov. Bs As - Seguridad provincial", "Cresmani Andr\u00e9s E. - Cerco el\u00e9ctrico (centrales de alarma)", "Fiberquil SRL - Mantenimiento preventivo", "Axin SRL - Cuota facial acceso Francia", "Ministerio de Seguridad - Diferencia", "Cresmani Andr\u00e9s E. - Cerco el\u00e9ctrico (materiales)", "Fiberquil SRL - C\u00e1mara seguridad", "Cresmani Andr\u00e9s E. - Cerco el\u00e9ctrico (mantenimiento)", "Castillo Jorge Luis - Alarma", "MAG Seguridad Privada SRL - Nota de cr\u00e9dito"], datasets: [{ data: [53096111, 10353456, 3500000, 3431144, 2670472, 856788, 731000, 444092, 365000, 100000, -3105864], backgroundColor: '#3b82f6' }] },
+    options: { indexAxis: 'y', plugins: { legend: { display: false } },
+      scales: { x: { ticks: { callback: v => '$' + (v/1e6).toFixed(1) + 'M' } }, y: { ticks: { font: { size: 10 } } } } }
+  });
+  new Chart(document.getElementById('chartVarios'), {
+    type: 'bar',
+    data: { labels: ["BAJO, CRISTIAN JAVIER - SERVICIO RECOLECCION HOJAS RAMAS Y P", "FERNANDEZ PEDRO - TOYOTA HILUX DOMINIO PCM797", "LEIVA CRISTIAN DAVID - SERVICIO", "IODO VINELLI - CUOTA 6 MUTUO USD 3.000 A $ 1.505", "NAVARRO JUAN CARLOS - SERVICIO", "AMERICA 210 S.A - COMBUSTIBLE Y LUBRICANTES, Pr COMBUSTIBLE ", "RADIO CARRAL, JOSE LUIS - HERRERIA, A CUENTA ARREGLO CARRO..", "PAGELLA DIEGO MARTIN - ALQUILER BRAZO ARTICULADO", "EL SOL SA - CUOTA 6 MOTONIVELADORA USD 1.800 A $ 1.505", "RAYMONDO, EMANUEL - FLETE", "GISSARA, MIGUEL ANGEL - MATERIALES", "HELP 24 HORAS S.R.L - AREA PROTEGIDA", "SALGADO JESICA ELIZABET - HONORARIOS PROFESIONALES", "RUIZ LUCAS AGUSTIN - REPARACION RODADO (3 fact.)", "SIMA CONVAR PARTES PIEZAS Y ACCESORIOS S.R.L - CANON LOCATIV", "COOP DE TRABAJ CARTONEROS UNIDOS DE BROWN - SERVICIO DE RECO", "CARRANZA MARGARITA AMPARO - LEASING CUOTA 7", "MARIANO PITA - REGISTRO AUTOMOTOR SAN VICENTE", "RISCAM SRL - COMBUSTIBLE Y LUBRICANTES", "FERNANDEZ INSUA S.A - RESPUESTOS MAQUINARIA", "PEDROZO MARCELO HUGO - REPARACION MAQUINARIA", "BROWN MARCELA - HONORARIOS PROFESIONALES", "GONZALEZ, FAVIO HERNAN - MATERIALES (2 fact.)", "PARCESEPE JOSE LUIS - VARIOS (4 fact.)", "LYP SRL - RED FUTBOL", "MAGNOLUZ SRL - MATERIALES (2 fact.)", "FIGUEROA, DEBORAH MARIELA - SERVICIO AGUA _ DISPENSER, SERVI", "TESI, MARIO LEANDRO - VARIOS", "GONZALEZ, JORGE OSCAR - REPUESTOS", "FERREIRO NICOLAS HECTOR - BOLSONES", "BRILTI SRL - VOLQUETES (2 fact.)", "CORBALAN AYLEN - SERVICIO", "ZAPOLNISKOF, CECILIA ANALIA - ALQUILER BA\u00d1OS QUIMICOS", "PELOZO JOSE RAMON - FC.00002-00013377, FC.00002-00013305 (2 ", "VIVIANA LUNA - LIMPIEZA ADMINISTRACION", "OSORIO SERGIO DANIEL - CONOS VIALES", "SCHULMEISTER NATALIA ELISABET - MATERIALES (2 fact.)", "RAS SRL - MATERIALES", "GONZALEZ RAMOS WALTER JAVIER - MATERIALES (3 fact.)", "INDRIERI JOSE ROBERTO - MATERIALES", "DISTRIBUIDORA DE RESPUESTOS PESADOS - VARIOS", "GINI MARIA MARTA - HONORARIOS PROFESIONALES", "ROSSI RODAMIENTOS SRL - VARIOS", "ARIAS HERNAN - MATERIALES", "ANDRIUOLO ISMAEL - ARTICULOS DE LIMPIEZA (2 fact.)", "PEREYRA HORACIO - VARIOS"], datasets: [{ data: [16031459, 12170800, 5146500, 4515000, 3427500, 3235097, 2940000, 2750000, 2709000, 2450000, 1611157, 1476550, 965000, 937157, 831600, 774843, 755000, 729540, 711700, 709912, 700000, 600000, 552896, 467400, 390000, 379894, 370000, 350000, 299521, 295000, 290400, 270000, 269093, 266900, 260500, 200000, 190309, 126964, 101210, 98336, 72600, 70000, 62000, 53777, 52629, 50000], backgroundColor: '#f59e0b' }] },
+    options: { indexAxis: 'y', plugins: { legend: { display: false } },
+      scales: { x: { ticks: { callback: v => '$' + (v/1e6).toFixed(1) + 'M' } }, y: { ticks: { font: { size: 9 } } } } }
+  });
+  proveedoresCharted = true;
 }
 
 function renderCargosTabla(rows) {
@@ -483,11 +481,9 @@ function renderCargosTabla(rows) {
   tbody.innerHTML = rows.map(r => {
     const [mnz, lote, prop, cat, soc, varv, deuda, interes, estado] = r;
     const cargo = cat + soc + varv;
-    const totalUnidad = cargo + deuda + interes;
     const badgeColor = estado === 'con_deuda' ? 'var(--red)' : (estado === 'al_dia' ? 'var(--green)' : 'var(--muted)');
     return `<tr><td>${mnz}</td><td>${lote}</td><td>${prop}</td>
-      <td class="num">${fmt(cargo)}</td><td class="num">${fmt(deuda)}</td><td class="num">${fmt(interes)}</td>
-      <td class="num total">${fmt(totalUnidad)}</td>
+      <td class="num total">${fmt(cargo)}</td>
       <td style="color:${badgeColor}; font-weight:600;">${estadoLabel[estado]}</td></tr>`;
   }).join('');
 }
@@ -512,16 +508,6 @@ function renderPeriodo() {
     : 'Los pagos de la liquidación ' + p + ' se informarán en la liquidación siguiente, que todavía no está cargada. '
       + 'Por eso aún no hay dato de cobranza para este período.';
 
-  document.querySelector('#kpiMoraTotal .value').textContent = fmt(s.moraTotal);
-  document.querySelector('#kpiMoraRecuperada .value').textContent = s.moraRecuperada === null ? 'Sin datos aún' : fmt(s.moraRecuperada);
-  document.getElementById('kpiMoraNota').textContent = s.cobradoEn ? '(informado en liq. ' + s.cobradoEn + ')' : '';
-  document.querySelector('#kpiRatioMora .value').textContent = s.ratioMora === null ? '—' : s.ratioMora + '%';
-  document.getElementById('notaMora').innerHTML = s.cobradoEn
-    ? 'La mora acumulada al cierre de ' + p + ' es ' + fmt(s.deudaAcum) + ' de deuda de capital + ' + fmt(s.intereses)
-      + ' de intereses. En ' + s.cobradoEn + ' se recuperaron ' + fmt(s.cobradoDeuda) + ' de deuda vieja y '
-      + fmt(s.cobradoInteres) + ' de intereses (el resto sigue impago o se recupera en meses posteriores).'
-    : 'Todavía no hay datos de recupero de mora para este período.';
-
   if (chartComposicion) chartComposicion.destroy();
   chartComposicion = new Chart(document.getElementById('chartComposicion'), {
     type: 'bar',
@@ -531,16 +517,6 @@ function renderPeriodo() {
     options: { plugins: { legend: { display: false },
       tooltip: { callbacks: { label: c => fmt(c.raw) } } },
       scales: { y: { ticks: { callback: v => '$' + (v/1e6).toFixed(1) + 'M' } } } }
-  });
-
-  if (chartCobranza) chartCobranza.destroy();
-  chartCobranza = new Chart(document.getElementById('chartCobranza'), {
-    type: 'bar',
-    data: { labels: ["Mora acumulada", "Recuperado este período"],
-      datasets: [{ data: [s.moraTotal, s.moraRecuperada ?? 0], backgroundColor: ['#ef4444','#22c55e'] }] },
-    options: { indexAxis: 'y', plugins: { legend: { display: false },
-      tooltip: { callbacks: { label: c => fmt(c.raw) } } },
-      scales: { x: { ticks: { callback: v => '$' + (v/1e6).toFixed(0) + 'M' } } } }
   });
 
   if (chartEstado) chartEstado.destroy();
