@@ -62,16 +62,18 @@
     </div>
 
     <div class="kpis">
-      <div class="kpi" id="kpiCobrar"><div class="label">Total a cobrar (cargo del período)</div><div class="value">-</div></div>
-      <div class="kpi green" id="kpiPagado"><div class="label">Total pagado este período</div><div class="value">-</div></div>
-      <div class="kpi teal" id="kpiRatio"><div class="label">Ratio de cobranza</div><div class="value">-</div></div>
+      <div class="kpi" id="kpiCobrar"><div class="label">Total facturado del período</div><div class="value">-</div></div>
+      <div class="kpi green" id="kpiPagado"><div class="label">Cobrado en término <span id="kpiPagadoNota" style="text-transform:none; font-weight:400;"></span></div><div class="value">-</div></div>
+      <div class="kpi teal" id="kpiRatio"><div class="label">Ratio de cobranza en término</div><div class="value">-</div></div>
       <div class="kpi green" id="kpiAlDia"><div class="label">Unidades al día</div><div class="value">-</div></div>
       <div class="kpi red" id="kpiConDeuda"><div class="label">Unidades con deuda</div><div class="value">-</div></div>
       <div class="kpi" id="kpiSinCuota"><div class="label">Unidades placeholder (sin cuota)</div><div class="value">-</div></div>
     </div>
 
+    <div class="note" id="notaImputacion" style="margin:-4px 0 20px;"></div>
+
     <div class="grid2">
-      <div class="card"><h3>A cobrar vs. pagado</h3><canvas id="chartCobranza" height="220"></canvas></div>
+      <div class="card"><h3>Facturado vs. cobrado de esta liquidación</h3><canvas id="chartCobranza" height="220"></canvas></div>
       <div class="card"><h3>Al día vs. con deuda</h3><canvas id="chartEstado" height="220"></canvas></div>
     </div>
 
@@ -1375,8 +1377,8 @@
     </div>
 
     <div class="grid2">
-      <div class="card"><h3>A cobrar vs. pagado por período</h3><canvas id="chartEvolucion" height="240"></canvas></div>
-      <div class="card"><h3>Ratio de cobranza por período</h3><canvas id="chartRatioEvolucion" height="240"></canvas></div>
+      <div class="card"><h3>Facturado vs. cobrado en término por período</h3><canvas id="chartEvolucion" height="240"></canvas></div>
+      <div class="card"><h3>Ratio de cobranza en término por período</h3><canvas id="chartRatioEvolucion" height="240"></canvas></div>
     </div>
 
     <div class="card" style="margin-bottom:24px;">
@@ -1387,14 +1389,16 @@
     <div class="card">
       <h3>Detalle por período</h3>
       <table>
-        <thead><tr><th>Período</th><th class="num">Total a cobrar</th><th class="num">Total pagado</th>
+        <thead><tr><th>Período</th><th class="num">Facturado</th><th class="num">Cobrado en término</th>
         <th class="num">Ratio cobranza</th><th class="num">Al día</th><th class="num">Con deuda</th><th class="num">Sin cuota</th></tr></thead>
         <tbody id="tblEvolucion"></tbody>
       </table>
       <div class="note">
-        Nota: "Total pagado" surge de los ingresos por pagos (en término, adeudados e intereses) informados en cada
-        liquidación. El estado de cada unidad (al día / con deuda) se calculó comparando su deuda registrada al cierre
-        de cada período (precisión validada contra los totales oficiales de cada PDF, diferencia &lt; 3%).
+        Nota: por el corte de imputación de AdminProp, los pagos de una liquidación se informan en la liquidación
+        siguiente. Acá cada fila alinea el cobro con la factura que efectivamente paga: "Cobrado en término" son los
+        ingresos por pagos en término informados en el mes siguiente. No incluye la recuperación posterior de esa
+        deuda (que ingresa como "pagos adeudados" en meses más adelante), por eso el ratio ronda el 65-70% aunque
+        la cobranza total termine siendo mayor.
       </div>
     </div>
   </div>
@@ -1508,19 +1512,29 @@ function renderPeriodo() {
   const p = periodoSelect.value;
   const rows = CARGOS_DATA.byPeriod[p];
   const s = CARGOS_DATA.summary[p];
+  const pendiente = s.cobradoTermino === null ? null : Math.max(s.totalCobrar - s.cobradoTermino, 0);
 
   document.querySelector('#kpiCobrar .value').textContent = fmt(s.totalCobrar);
-  document.querySelector('#kpiPagado .value').textContent = fmt(s.totalPagado);
-  document.querySelector('#kpiRatio .value').textContent = s.ratioCobranza + '%';
+  document.querySelector('#kpiPagado .value').textContent = s.cobradoTermino === null ? 'Sin datos aún' : fmt(s.cobradoTermino);
+  document.getElementById('kpiPagadoNota').textContent = s.cobradoEn ? '(informado en liq. ' + s.cobradoEn + ')' : '';
+  document.querySelector('#kpiRatio .value').textContent = s.ratioCobranza === null ? '-' : s.ratioCobranza + '%';
   document.querySelector('#kpiAlDia .value').textContent = s.alDia;
   document.querySelector('#kpiConDeuda .value').textContent = s.conDeuda;
   document.querySelector('#kpiSinCuota .value').textContent = s.sinCuota;
   document.getElementById('cargoTablaTitulo').textContent = 'Liquidación ' + p + ' (' + rows.length + ' unidades)';
 
+  document.getElementById('notaImputacion').innerHTML = s.cobradoEn
+    ? 'Los pagos de la liquidación ' + p + ' se imputan en la liquidación siguiente (' + s.cobradoEn + '), por el corte de imputación de AdminProp. '
+      + '"Cobrado en término" es lo que se pagó de <em>esta</em> factura. En ' + s.cobradoEn + ' además ingresaron '
+      + fmt(s.cobradoDeuda) + ' por deuda de períodos anteriores y ' + fmt(s.cobradoInteres) + ' por intereses.'
+    : 'Los pagos de la liquidación ' + p + ' se imputarán en la liquidación siguiente, que todavía no está cargada. '
+      + 'Por eso aún no hay dato de cobranza para este período.';
+
   if (chartCobranza) chartCobranza.destroy();
   chartCobranza = new Chart(document.getElementById('chartCobranza'), {
     type: 'bar',
-    data: { labels: ["A cobrar", "Pagado"], datasets: [{ data: [s.totalCobrar, s.totalPagado], backgroundColor: ['#9ca3af','#22c55e'] }] },
+    data: { labels: ["Facturado", "Cobrado en término", "Pendiente"],
+      datasets: [{ data: [s.totalCobrar, s.cobradoTermino ?? 0, pendiente ?? 0], backgroundColor: ['#9ca3af','#22c55e','#ef4444'] }] },
     options: { plugins: { legend: { display: false } }, scales: { y: { ticks: { callback: v => '$' + (v/1e6).toFixed(1) + 'M' } } } }
   });
 
@@ -1547,8 +1561,10 @@ renderPeriodo();
 /* ===================== EVOLUCIÓN (comparativa entre períodos) ===================== */
 document.getElementById('tblEvolucion').innerHTML = CARGOS_DATA.periods.map(p => {
   const s = CARGOS_DATA.summary[p];
-  return `<tr><td>${p}</td><td class="num">${fmt(s.totalCobrar)}</td><td class="num">${fmt(s.totalPagado)}</td>
-    <td class="num">${s.ratioCobranza}%</td><td class="num">${s.alDia}</td><td class="num total">${s.conDeuda}</td><td class="num">${s.sinCuota}</td></tr>`;
+  const cobrado = s.cobradoTermino === null ? '<span style="color:var(--muted)">pendiente</span>' : fmt(s.cobradoTermino);
+  const ratio = s.ratioCobranza === null ? '<span style="color:var(--muted)">—</span>' : s.ratioCobranza + '%';
+  return `<tr><td>${p}</td><td class="num">${fmt(s.totalCobrar)}</td><td class="num">${cobrado}</td>
+    <td class="num">${ratio}</td><td class="num">${s.alDia}</td><td class="num total">${s.conDeuda}</td><td class="num">${s.sinCuota}</td></tr>`;
 }).join('');
 
 let evolucionCharted = false;
@@ -1556,7 +1572,7 @@ function initEvolucionCharts() {
   if (evolucionCharted) return;
   evolucionCharted = true;
   const evoCobrar = CARGOS_DATA.periods.map(p => CARGOS_DATA.summary[p].totalCobrar);
-  const evoPagado = CARGOS_DATA.periods.map(p => CARGOS_DATA.summary[p].totalPagado);
+  const evoPagado = CARGOS_DATA.periods.map(p => CARGOS_DATA.summary[p].cobradoTermino);
   const evoRatio = CARGOS_DATA.periods.map(p => CARGOS_DATA.summary[p].ratioCobranza);
   const evoAlDia = CARGOS_DATA.periods.map(p => CARGOS_DATA.summary[p].alDia);
   const evoConDeuda = CARGOS_DATA.periods.map(p => CARGOS_DATA.summary[p].conDeuda);
@@ -1564,14 +1580,14 @@ function initEvolucionCharts() {
   new Chart(document.getElementById('chartEvolucion'), {
     type: 'line',
     data: { labels: CARGOS_DATA.periods, datasets: [
-      { label: 'A cobrar', data: evoCobrar, borderColor: '#9ca3af', backgroundColor: 'rgba(156,163,175,0.1)', fill: true, tension: 0.2 },
-      { label: 'Pagado', data: evoPagado, borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.15)', fill: true, tension: 0.2 },
+      { label: 'Facturado', data: evoCobrar, borderColor: '#9ca3af', backgroundColor: 'rgba(156,163,175,0.1)', fill: true, tension: 0.2 },
+      { label: 'Cobrado en término', data: evoPagado, borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.15)', fill: true, tension: 0.2, spanGaps: false },
     ] },
     options: { plugins: { legend: { position: 'bottom' } }, scales: { y: { ticks: { callback: v => '$' + (v/1e6).toFixed(0) + 'M' } } } }
   });
   new Chart(document.getElementById('chartRatioEvolucion'), {
     type: 'line',
-    data: { labels: CARGOS_DATA.periods, datasets: [{ label: 'Ratio de cobranza', data: evoRatio, borderColor: '#14b8a6', backgroundColor: 'rgba(20,184,166,0.15)', fill: true, tension: 0.2 }] },
+    data: { labels: CARGOS_DATA.periods, datasets: [{ label: 'Ratio de cobranza en término', data: evoRatio, borderColor: '#14b8a6', backgroundColor: 'rgba(20,184,166,0.15)', fill: true, tension: 0.2, spanGaps: false }] },
     options: { plugins: { legend: { display: false } }, scales: { y: { ticks: { callback: v => v + '%' } } } }
   });
   new Chart(document.getElementById('chartEstadoEvolucion'), {
