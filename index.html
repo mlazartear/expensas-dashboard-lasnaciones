@@ -237,24 +237,24 @@
       <div class="card"><h3>Ratio de cobranza por período</h3><canvas id="chartRatioEvolucion" height="240"></canvas></div>
     </div>
 
-    <div class="card" style="margin-bottom:24px;">
-      <h3>Unidades al día vs. con deuda por período</h3>
-      <canvas id="chartEstadoEvolucion" height="140"></canvas>
+    <div class="grid2">
+      <div class="card"><h3>Mora acumulada vs. recuperado por período</h3><canvas id="chartMoraEvolucion" height="240"></canvas></div>
+      <div class="card"><h3>Unidades al día vs. con deuda por período</h3><canvas id="chartEstadoEvolucion" height="240"></canvas></div>
     </div>
 
     <div class="card">
       <h3>Detalle por período</h3>
       <table>
-        <thead><tr><th>Período</th><th class="num">Total a cobrar</th><th class="num">Cargo del mes</th>
-        <th class="num">Arrastre (deuda + int.)</th><th class="num">Cobrado</th>
-        <th class="num">Ratio cobranza</th><th class="num">Al día</th><th class="num">Con deuda</th></tr></thead>
+        <thead><tr><th>Período</th><th class="num">Total a cobrar</th><th class="num">Cobrado</th>
+        <th class="num">Ratio cobranza</th><th class="num">Mora acumulada</th><th class="num">Recuperado</th>
+        <th class="num">Al día</th><th class="num">Con deuda</th></tr></thead>
         <tbody id="tblEvolucion"></tbody>
       </table>
       <div class="note">
-        Nota: el "Total a cobrar" replica el criterio del PDF (cargo del mes + deuda de períodos anteriores + intereses).
-        "Cobrado" son todos los ingresos por pagos del período, que se aplican contra el saldo anterior; el ratio los
-        compara contra ese saldo. La caída del ratio no significa que se cobre menos plata — de hecho se cobra más cada
-        mes — sino que la deuda acumulada crece más rápido que la cobranza.
+        Nota: por el corte de imputación de AdminProp, los pagos de una liquidación se informan recién en la siguiente.
+        "Cobrado" y "Recuperado" muestran lo pagado de la expensa y de la mora de <em>ese</em> período específico
+        (no lo que ingresó ese mes por facturas de otros meses), por eso el último período figura sin dato: se sabrá
+        con la próxima liquidación.
       </div>
     </div>
 
@@ -531,31 +531,31 @@ renderPeriodo();
 /* ===================== EVOLUCIÓN (comparativa entre períodos) ===================== */
 document.getElementById('tblEvolucion').innerHTML = CARGOS_DATA.periods.map(p => {
   const s = CARGOS_DATA.summary[p];
+  const cobrado = s.cobradoTermino === null ? '<span style="color:var(--muted)">pendiente</span>' : fmt(s.cobradoTermino);
   const ratio = s.ratioCobranza === null ? '<span style="color:var(--muted)">—</span>' : s.ratioCobranza + '%';
-  return `<tr><td>${p}</td><td class="num">${fmt(s.totalCobrar)}</td><td class="num">${fmt(s.cargoMes)}</td>
-    <td class="num total">${fmt(s.deudaAcum + s.intereses)}</td><td class="num">${fmt(s.pagos)}</td>
-    <td class="num">${ratio}</td><td class="num">${s.alDia}</td><td class="num total">${s.conDeuda}</td></tr>`;
+  const recuperado = s.moraRecuperada === null ? '<span style="color:var(--muted)">pendiente</span>' : fmt(s.moraRecuperada);
+  return `<tr><td>${p}</td><td class="num">${fmt(s.cargoMes)}</td><td class="num">${cobrado}</td>
+    <td class="num">${ratio}</td><td class="num total">${fmt(s.moraTotal)}</td><td class="num">${recuperado}</td>
+    <td class="num">${s.alDia}</td><td class="num total">${s.conDeuda}</td></tr>`;
 }).join('');
 
 let evolucionCharted = false;
 function initEvolucionCharts() {
   if (evolucionCharted) return;
   evolucionCharted = true;
-  const evoTotal = CARGOS_DATA.periods.map(p => CARGOS_DATA.summary[p].totalCobrar);
   const evoCargo = CARGOS_DATA.periods.map(p => CARGOS_DATA.summary[p].cargoMes);
-  const evoArrastre = CARGOS_DATA.periods.map(p => CARGOS_DATA.summary[p].deudaAcum + CARGOS_DATA.summary[p].intereses);
-  const evoPagos = CARGOS_DATA.periods.map(p => CARGOS_DATA.summary[p].pagos);
+  const evoCobrado = CARGOS_DATA.periods.map(p => CARGOS_DATA.summary[p].cobradoTermino);
   const evoRatio = CARGOS_DATA.periods.map(p => CARGOS_DATA.summary[p].ratioCobranza);
+  const evoMora = CARGOS_DATA.periods.map(p => CARGOS_DATA.summary[p].moraTotal);
+  const evoRecuperado = CARGOS_DATA.periods.map(p => CARGOS_DATA.summary[p].moraRecuperada);
   const evoAlDia = CARGOS_DATA.periods.map(p => CARGOS_DATA.summary[p].alDia);
   const evoConDeuda = CARGOS_DATA.periods.map(p => CARGOS_DATA.summary[p].conDeuda);
 
   new Chart(document.getElementById('chartEvolucion'), {
     type: 'line',
     data: { labels: CARGOS_DATA.periods, datasets: [
-      { label: 'Total a cobrar', data: evoTotal, borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.10)', fill: true, tension: 0.2 },
-      { label: 'Deuda + intereses (arrastre)', data: evoArrastre, borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.10)', fill: true, tension: 0.2 },
-      { label: 'Cargo del mes', data: evoCargo, borderColor: '#9ca3af', backgroundColor: 'rgba(156,163,175,0.08)', fill: false, tension: 0.2 },
-      { label: 'Cobrado', data: evoPagos, borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.15)', fill: true, tension: 0.2 },
+      { label: 'Total a cobrar (expensa del mes)', data: evoCargo, borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.10)', fill: true, tension: 0.2 },
+      { label: 'Cobrado', data: evoCobrado, borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.15)', fill: true, tension: 0.2, spanGaps: false },
     ] },
     options: { plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
       tooltip: { callbacks: { label: c => c.dataset.label + ': ' + fmt(c.raw) } } },
@@ -565,8 +565,18 @@ function initEvolucionCharts() {
     type: 'line',
     data: { labels: CARGOS_DATA.periods, datasets: [{ label: 'Ratio de cobranza', data: evoRatio, borderColor: '#14b8a6', backgroundColor: 'rgba(20,184,166,0.15)', fill: true, tension: 0.2, spanGaps: false }] },
     options: { plugins: { legend: { display: false },
-      tooltip: { callbacks: { label: c => c.raw + '% del saldo anterior' } } },
+      tooltip: { callbacks: { label: c => c.raw + '% de esa expensa' } } },
       scales: { y: { ticks: { callback: v => v + '%' } } } }
+  });
+  new Chart(document.getElementById('chartMoraEvolucion'), {
+    type: 'line',
+    data: { labels: CARGOS_DATA.periods, datasets: [
+      { label: 'Mora acumulada', data: evoMora, borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.10)', fill: true, tension: 0.2 },
+      { label: 'Recuperado', data: evoRecuperado, borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.15)', fill: true, tension: 0.2, spanGaps: false },
+    ] },
+    options: { plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
+      tooltip: { callbacks: { label: c => c.dataset.label + ': ' + fmt(c.raw) } } },
+      scales: { y: { ticks: { callback: v => '$' + (v/1e6).toFixed(0) + 'M' } } } }
   });
   new Chart(document.getElementById('chartEstadoEvolucion'), {
     type: 'bar',
