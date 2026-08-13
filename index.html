@@ -10,7 +10,19 @@
     --teal: #14b8a6; --red: #ef4444; --orange: #f59e0b; --green: #22c55e; --text: #e5e7eb; --muted: #9ca3af;
   }
   * { box-sizing: border-box; }
-  body { background: var(--bg); color: var(--text); font-family: -apple-system,"Segoe UI",Roboto,sans-serif; margin:0; padding:24px; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system,"Segoe UI",Roboto,sans-serif; margin:0; display:flex; min-height:100vh; }
+  .sidebar { width: 72px; flex-shrink:0; background: var(--card); border-right: 1px solid var(--border);
+    display:flex; flex-direction:column; align-items:center; padding:20px 0; gap:6px; position:sticky; top:0; height:100vh; }
+  .sidebar .brand { color: var(--teal); font-size:22px; font-weight:800; margin-bottom:18px; }
+  .nav-btn { width:52px; height:52px; border-radius:10px; background:none; border:none; color:var(--muted);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; cursor:pointer; font-size:9px;
+    font-weight:600; letter-spacing:.02em; }
+  .nav-btn svg { width:22px; height:22px; }
+  .nav-btn:hover { background: rgba(255,255,255,0.05); color: var(--text); }
+  .nav-btn.active { background: rgba(20,184,166,0.15); color: var(--teal); }
+  .main { flex:1; min-width:0; padding:24px; }
+  .view { display:none; }
+  .view.active { display:block; }
   h1 { font-size: 22px; margin: 0 0 4px; }
   h2.section { font-size: 15px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin: 32px 0 12px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
   .subtitle { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
@@ -41,20 +53,36 @@
 </style>
 </head>
 <body>
-  <h1>Dashboard — Barrio Parque Las Naciones</h1>
-  <div class="subtitle" id="subtitulo">Barrio Parque Las Naciones · Liquidaciones 1/2026 a 8/2026</div>
+  <nav class="sidebar">
+    <div class="brand">🏡</div>
+    <button class="nav-btn active" data-view="dashboard" title="Dashboard">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+      Dashboard
+    </button>
+    <button class="nav-btn" data-view="evolucion" title="Evolución">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 17 9 11 13 15 21 7"/><polyline points="14 7 21 7 21 14"/></svg>
+      Evolución
+    </button>
+  </nav>
+
+  <div class="main">
+
+  <!-- ===================== VISTA DASHBOARD ===================== -->
+  <div id="view-dashboard" class="view active">
+
+  <h1>Barrio Parque Las Naciones</h1>
+  <div class="subtitle" id="subtitulo">Dashboard de expensas · liquidaciones AdminProp 1/2026 a 8/2026</div>
 
   <div id="periodoBar" style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; background:var(--card); border:1px solid var(--border); border-radius:10px; padding:12px 16px; margin-bottom:18px;">
     <label for="periodoSelect" style="font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; font-weight:600;">Período</label>
     <select id="periodoSelect" style="padding:8px 10px; background:#11161d; border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:15px; font-weight:600; min-width:200px;"></select>
-    <span style="font-size:12px; color:var(--muted);">Aplica a General, Deudores y Gastos</span>
+    <span id="periodoBarInfo" style="font-size:12px; color:var(--muted);"></span>
   </div>
 
   <div class="tabs">
     <button class="tab-btn active" data-tab="general">General</button>
     <button class="tab-btn" data-tab="deudores">Deudores</button>
     <button class="tab-btn" data-tab="gastos">Gastos</button>
-    <button class="tab-btn" data-tab="evolucion">Evolución</button>
   </div>
 
   <!-- ===================== TAB GENERAL ===================== -->
@@ -193,14 +221,13 @@
     </div>
   </div>
 
+  </div> <!-- /view-dashboard -->
 
-  <!-- ===================== TAB EVOLUCIÓN ===================== -->
-  <div id="tab-evolucion" class="tab-content">
+  <!-- ===================== VISTA EVOLUCIÓN ===================== -->
+  <div id="view-evolucion" class="view">
 
-    <h2 class="section">Evolución mensual (1/2026 - 8/2026)</h2>
-    <div class="subtitle" style="margin-top:-10px;">
-      Comparativa entre períodos: cómo evolucionan lo reclamado, el arrastre de deuda, la cobranza y la morosidad.
-    </div>
+    <h1>Evolución mensual</h1>
+    <div class="subtitle">Barrio Parque Las Naciones · comparativa entre liquidaciones 1/2026 a 8/2026 — cómo evolucionan lo reclamado, el arrastre de deuda, la cobranza y la morosidad.</div>
 
     <div class="grid2">
       <div class="card"><h3>Total a cobrar vs. cobrado por período</h3><canvas id="chartEvolucion" height="240"></canvas></div>
@@ -227,7 +254,10 @@
         mes — sino que la deuda acumulada crece más rápido que la cobranza.
       </div>
     </div>
-  </div>
+
+  </div> <!-- /view-evolucion -->
+
+  </div> <!-- /main -->
 
 <script src="cargos_data.js"></script>
 <script>
@@ -242,6 +272,17 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.classList.add('active');
     document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
     // charts created while their tab was hidden get sized to ~0px; fix it up now that it's visible
+    Object.values(Chart.instances || {}).forEach(ch => ch.resize());
+  });
+});
+
+document.querySelectorAll('.nav-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('view-' + btn.dataset.view).classList.add('active');
+    if (btn.dataset.view === 'evolucion') initEvolucionCharts();
     Object.values(Chart.instances || {}).forEach(ch => ch.resize());
   });
 });
@@ -463,8 +504,7 @@ function renderPeriodo() {
   renderCargosTabla(rows);
   renderDeudores(p, rows, s);
   renderGastos(p);
-  document.getElementById('subtitulo').textContent =
-    'Liquidación ' + p + ' · ' + s.unidades + ' unidades · datos de 1/2026 a 8/2026';
+  document.getElementById('periodoBarInfo').textContent = 'Liquidación ' + p + ' · ' + s.unidades + ' unidades';
 }
 
 periodoSelect.addEventListener('change', renderPeriodo);
@@ -526,7 +566,6 @@ function initEvolucionCharts() {
     options: { plugins: { legend: { position: 'bottom' } }, scales: { x: { stacked: true }, y: { stacked: true } } }
   });
 }
-document.querySelector('[data-tab="evolucion"]').addEventListener('click', initEvolucionCharts);
 </script>
 </body>
 </html>
