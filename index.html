@@ -47,6 +47,7 @@
     <button class="tab-btn active" data-tab="general">General</button>
     <button class="tab-btn" data-tab="deudores">Deudores</button>
     <button class="tab-btn" data-tab="gastos">Gastos</button>
+    <button class="tab-btn" data-tab="cargos">Cargos Mensuales</button>
   </div>
 
   <!-- ===================== TAB GENERAL ===================== -->
@@ -1342,6 +1343,52 @@
     </div>
   </div>
 
+  <!-- ===================== TAB CARGOS MENSUALES ===================== -->
+  <div id="tab-cargos" class="tab-content">
+
+    <h2 class="section">Cargos facturados por mes</h2>
+    <div class="subtitle" style="margin-top:-10px;">
+      Cargo del período (C. CAT + C. SOCIAL + C. FACIAL/VARIOS) por unidad. No incluye deuda acumulada de períodos anteriores.
+    </div>
+
+    <div class="kpis" style="max-width:420px;">
+      <div class="kpi">
+        <div class="label">Período</div>
+        <select id="periodoSelect" style="width:100%; margin-top:6px; padding:8px; background:#11161d; border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:15px; font-weight:600;"></select>
+      </div>
+    </div>
+
+    <div class="kpis">
+      <div class="kpi teal"><div class="label">Total facturado del período</div><div class="value" id="cargoTotalPeriodo">-</div></div>
+      <div class="kpi"><div class="label">C. Categoría</div><div class="value" id="cargoCat">-</div></div>
+      <div class="kpi"><div class="label">C. Social</div><div class="value" id="cargoSoc">-</div></div>
+      <div class="kpi"><div class="label">C. Facial / Varios</div><div class="value" id="cargoVar">-</div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="card"><h3>Evolución del total facturado (1/2026 - 8/2026)</h3><canvas id="chartEvolucion" height="220"></canvas></div>
+      <div class="card"><h3>Cargo por manzana (top 10 del período)</h3><canvas id="chartCargoMnz" height="220"></canvas></div>
+    </div>
+
+    <div class="card">
+      <h3>Listado por unidad — <span id="cargoTablaTitulo"></span></h3>
+      <input id="searchCargos" type="text" placeholder="Buscar por propietario, manzana o lote...">
+      <div class="table-wrap">
+        <table id="tblCargos">
+          <thead><tr><th>Mnz</th><th>Lote</th><th>Propietario</th>
+          <th class="num">C. CAT.</th><th class="num">C. SOCIAL</th><th class="num">C. FACIAL/VARIOS</th><th class="num">Total del período</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="note">
+        Nota: los montos surgen de extraer texto de los PDF de liquidación mensual. En filas con nombres de propietarios muy
+        largos puede haber superposición de texto en el PDF original; los totales agregados fueron validados contra la fila
+        TOTALES de cada liquidación (diferencia &lt; 0,3%).
+      </div>
+    </div>
+  </div>
+
+<script src="cargos_data.js"></script>
 <script>
 const textColor = '#9ca3af';
 Chart.defaults.color = textColor;
@@ -1427,6 +1474,74 @@ document.querySelectorAll('#tbl th').forEach((th, idx) => {
     rows.forEach(r => tbody.appendChild(r));
   });
 });
+
+/* ===================== CARGOS MENSUALES ===================== */
+const fmt = n => '$' + Math.round(n).toLocaleString('es-AR');
+const periodoSelect = document.getElementById('periodoSelect');
+CARGOS_DATA.periods.forEach(p => {
+  const opt = document.createElement('option');
+  opt.value = p; opt.textContent = 'Liquidación ' + p;
+  periodoSelect.appendChild(opt);
+});
+periodoSelect.value = CARGOS_DATA.periods[CARGOS_DATA.periods.length - 1];
+
+let chartCargoMnz = null;
+
+function renderCargosTabla(rows) {
+  const tbody = document.querySelector('#tblCargos tbody');
+  tbody.innerHTML = rows.map(r => {
+    const [mnz, lote, prop, cat, soc, varv] = r;
+    const total = cat + soc + varv;
+    return `<tr><td>${mnz}</td><td>${lote}</td><td>${prop}</td>
+      <td class="num">${fmt(cat)}</td><td class="num">${fmt(soc)}</td><td class="num">${fmt(varv)}</td>
+      <td class="num total">${fmt(total)}</td></tr>`;
+  }).join('');
+}
+
+function renderPeriodo() {
+  const p = periodoSelect.value;
+  const rows = CARGOS_DATA.byPeriod[p];
+  let cat = 0, soc = 0, varr = 0;
+  const byMnz = {};
+  rows.forEach(([mnz, lote, prop, c, s, v]) => {
+    cat += c; soc += s; varr += v;
+    byMnz[mnz] = (byMnz[mnz] || 0) + c + s + v;
+  });
+  const total = cat + soc + varr;
+
+  document.getElementById('cargoTotalPeriodo').textContent = fmt(total);
+  document.getElementById('cargoCat').textContent = fmt(cat);
+  document.getElementById('cargoSoc').textContent = fmt(soc);
+  document.getElementById('cargoVar').textContent = fmt(varr);
+  document.getElementById('cargoTablaTitulo').textContent = 'Liquidación ' + p + ' (' + rows.length + ' unidades)';
+
+  const topMnz = Object.entries(byMnz).sort((a,b) => b[1]-a[1]).slice(0,10);
+  if (chartCargoMnz) chartCargoMnz.destroy();
+  chartCargoMnz = new Chart(document.getElementById('chartCargoMnz'), {
+    type: 'bar',
+    data: { labels: topMnz.map(x => 'Mnz ' + x[0]), datasets: [{ label: 'Cargo total', data: topMnz.map(x => x[1]), backgroundColor: '#14b8a6' }] },
+    options: { plugins: { legend: { display: false } }, scales: { y: { ticks: { callback: v => '$' + (v/1e6).toFixed(1) + 'M' } } } }
+  });
+
+  renderCargosTabla(rows);
+}
+
+periodoSelect.addEventListener('change', renderPeriodo);
+document.getElementById('searchCargos').addEventListener('input', function() {
+  const q = this.value.toLowerCase();
+  document.querySelectorAll('#tblCargos tbody tr').forEach(tr => {
+    tr.style.display = tr.textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
+});
+
+const evolucionData = CARGOS_DATA.periods.map(p => CARGOS_DATA.byPeriod[p].reduce((s, r) => s + r[3] + r[4] + r[5], 0));
+new Chart(document.getElementById('chartEvolucion'), {
+  type: 'line',
+  data: { labels: CARGOS_DATA.periods, datasets: [{ label: 'Total facturado', data: evolucionData, borderColor: '#14b8a6', backgroundColor: 'rgba(20,184,166,0.15)', fill: true, tension: 0.2 }] },
+  options: { plugins: { legend: { display: false } }, scales: { y: { ticks: { callback: v => '$' + (v/1e6).toFixed(0) + 'M' } } } }
+});
+
+renderPeriodo();
 </script>
 </body>
 </html>
