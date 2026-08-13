@@ -81,7 +81,7 @@
 
   <div class="tabs">
     <button class="tab-btn active" data-tab="general">General</button>
-    <button class="tab-btn" data-tab="deudores">Deudores</button>
+    <button class="tab-btn" data-tab="deudores">Morosidad</button>
     <button class="tab-btn" data-tab="gastos">Gastos</button>
   </div>
 
@@ -145,12 +145,13 @@
 
     <h2 class="section">Deuda acumulada (saldos vencidos)</h2>
     <div class="kpis">
-      <div class="kpi" id="dKpiUnidades"><div class="label">Total de unidades</div><div class="value">-</div></div>
       <div class="kpi red" id="dKpiConDeuda"><div class="label">Unidades con deuda</div><div class="value">-</div></div>
       <div class="kpi" id="dKpiMorosidad"><div class="label">% morosidad</div><div class="value">-</div></div>
       <div class="kpi red" id="dKpiCapital"><div class="label">Deuda de capital</div><div class="value">-</div></div>
       <div class="kpi orange" id="dKpiIntereses"><div class="label">Intereses acumulados</div><div class="value">-</div></div>
       <div class="kpi teal" id="dKpiTotal"><div class="label">Total adeudado</div><div class="value">-</div></div>
+      <div class="kpi green" id="dKpiRecuperado"><div class="label">Recuperado de la mora <span id="dKpiRecuperadoNota" style="text-transform:none; font-weight:400;"></span></div><div class="value">-</div></div>
+      <div class="kpi orange" id="dKpiRatioMora"><div class="label">% de la mora recuperado</div><div class="value">-</div></div>
     </div>
 
     <h2 class="section">Análisis de deuda</h2>
@@ -347,12 +348,14 @@ function renderDeudores(p, rows, s) {
     .map(r => ({ mnz: r[0], lote: r[1], prop: r[2], deuda: r[4], interes: r[5], total: r[4] + r[5] }))
     .sort((a, b) => b.total - a.total);
 
-  document.querySelector('#dKpiUnidades .value').textContent = s.unidades;
   document.querySelector('#dKpiConDeuda .value').textContent = s.conDeuda;
   document.querySelector('#dKpiMorosidad .value').textContent = s.morosidad + '%';
   document.querySelector('#dKpiCapital .value').textContent = fmt(s.deudaAcum);
   document.querySelector('#dKpiIntereses .value').textContent = fmt(s.intereses);
   document.querySelector('#dKpiTotal .value').textContent = fmt(s.deudaAcum + s.intereses);
+  document.querySelector('#dKpiRecuperado .value').textContent = s.moraRecuperada === null ? 'Sin datos aún' : fmt(s.moraRecuperada);
+  document.getElementById('dKpiRecuperadoNota').textContent = s.cobradoEn ? '(informado en liq. ' + s.cobradoEn + ')' : '';
+  document.querySelector('#dKpiRatioMora .value').textContent = s.ratioMora === null ? '—' : s.ratioMora + '%';
   document.getElementById('deudoresTablaTitulo').textContent =
     'Liquidación ' + p + ' (' + deudores.length + ' unidades con deuda)';
 
