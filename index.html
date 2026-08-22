@@ -429,22 +429,24 @@ function renderDeudores(p, rows, s) {
 /* ---------- GASTOS (por período) ---------- */
 const RUBRO_COLORS = ['#ef4444','#f59e0b','#14b8a6','#3b82f6','#a855f7','#22c55e','#f97316','#64748b'];
 // Proveedores dentro de "Varios" cuyo cargo es en realidad un servicio/contrato
-// recurrente mes a mes (aunque AdminProp lo agrupe en el rubro catch-all "Varios").
-const VARIOS_FIJO_PROVIDERS = new Set([
-  'BAJO, CRISTIAN JAVIER',
-  'AMERICA 210 S.A.',
-  'EL SOL SA',
-  'FIGUEROA, DEBORAH MARIELA',
-  'HELP 24 HORAS S.R.L.',
-  'ZAPOLNISKOF, CECILIA ANALIA',
-  'CARRANZA MARGARITA AMPARO',
-  'COOP DE TRABAJ CARTONEROS UNIDOS DE BROWN',
-  'IODO VINELLI',
-  'LEIVA CRISTIAN DAVID',
-  'NAVARRO JUAN CARLOS',
-  'SALGADO JESICA ELIZABET',
-  'SOCIEDAD DE BOMBEROS VOLUNTARIOS DE GUERNICA',
+// recurrente mes a mes (aunque AdminProp lo agrupe en el rubro catch-all "Varios"),
+// con el concepto del servicio que prestan.
+const VARIOS_FIJO_CONCEPTOS = new Map([
+  ['BAJO, CRISTIAN JAVIER', 'Recolección de residuos y ramas'],
+  ['AMERICA 210 S.A.', 'Combustible y lubricantes'],
+  ['EL SOL SA', 'Cuota motoniveladora (leasing)'],
+  ['FIGUEROA, DEBORAH MARIELA', 'Servicio de agua'],
+  ['HELP 24 HORAS S.R.L.', 'Área protegida'],
+  ['ZAPOLNISKOF, CECILIA ANALIA', 'Alquiler baños químicos'],
+  ['CARRANZA MARGARITA AMPARO', 'Cuota leasing'],
+  ['COOP DE TRABAJ CARTONEROS UNIDOS DE BROWN', 'Recolección de residuos sólidos'],
+  ['IODO VINELLI', 'Cuota mutuo'],
+  ['LEIVA CRISTIAN DAVID', 'Servicio'],
+  ['NAVARRO JUAN CARLOS', 'Servicio'],
+  ['SALGADO JESICA ELIZABET', 'Honorarios profesionales'],
+  ['SOCIEDAD DE BOMBEROS VOLUNTARIOS DE GUERNICA', 'Canon locativo'],
 ]);
+const VARIOS_FIJO_PROVIDERS = new Set(VARIOS_FIJO_CONCEPTOS.keys());
 function renderGastos(p) {
   const g = CARGOS_DATA.gastos[p];
   const total = g.total;
@@ -529,7 +531,7 @@ function renderVariosChart(p, detalle) {
   if (chartVarios) chartVarios.destroy();
   chartVarios = new Chart(document.getElementById('chartVarios'), {
     type: 'bar',
-    data: { labels: detalle.map(r => r[0]),
+    data: { labels: detalle.map(([nombre]) => VARIOS_FIJO_CONCEPTOS.has(nombre) ? VARIOS_FIJO_CONCEPTOS.get(nombre) + ' — ' + nombre : nombre),
       datasets: [{ data: detalle.map(r => r[1]),
         backgroundColor: detalle.map(([nombre]) => VARIOS_FIJO_PROVIDERS.has(nombre) ? '#22c55e' : '#f59e0b') }] },
     options: { indexAxis: 'y', plugins: { legend: { display: false },
