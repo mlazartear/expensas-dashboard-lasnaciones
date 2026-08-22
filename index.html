@@ -63,6 +63,10 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 17 9 11 13 15 21 7"/><polyline points="14 7 21 7 21 14"/></svg>
       Evolución
     </button>
+    <button class="nav-btn" data-view="sugerencias" title="Sugerencias">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><circle cx="9" cy="10" r="1"/><circle cx="12" cy="10" r="1"/><circle cx="15" cy="10" r="1"/></svg>
+      Sugerencias
+    </button>
   </nav>
 
   <div class="main">
@@ -282,6 +286,35 @@
 
   </div> <!-- /view-evolucion -->
 
+  <!-- ===================== VISTA SUGERENCIAS ===================== -->
+  <div id="view-sugerencias" class="view">
+
+    <h1>Sugerencias de los propietarios</h1>
+    <div class="subtitle">Dejá tu sugerencia sobre qué debería priorizar el barrio y votá las que más te representen.</div>
+
+    <div class="card" style="margin-bottom:24px;">
+      <h3>Nueva sugerencia</h3>
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <input id="sugUnidad" type="text" placeholder="Tu unidad (ej: 2-A)" style="padding:10px 12px; background:#11161d; border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:14px;">
+        <textarea id="sugTexto" rows="3" placeholder="¿Qué debería priorizar el barrio?" style="padding:10px 12px; background:#11161d; border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:14px; font-family:inherit; resize:vertical;"></textarea>
+        <button id="sugEnviar" style="align-self:flex-start; padding:10px 20px; background:var(--teal); border:none; border-radius:6px; color:#0f1419; font-weight:700; font-size:14px; cursor:pointer;">Publicar sugerencia</button>
+        <div id="sugError" style="color:var(--red); font-size:13px; display:none;"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Ranking de sugerencias</h3>
+      <div id="sugLista" style="display:flex; flex-direction:column; gap:12px;"></div>
+      <div id="sugVacio" class="note" style="display:none;">Todavía no hay sugerencias. ¡Sé el primero en dejar una!</div>
+    </div>
+
+    <div class="note">
+      Nota: las sugerencias y votos se guardan en este navegador (localStorage), identificados por unidad. Cada unidad
+      puede votar una sola vez por sugerencia (podés cambiar tu voto en cualquier momento).
+    </div>
+
+  </div> <!-- /view-sugerencias -->
+
   </div> <!-- /main -->
 
 <script src="cargos_data.js"></script>
@@ -322,9 +355,106 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
     btn.classList.add('active');
     document.getElementById('view-' + btn.dataset.view).classList.add('active');
     if (btn.dataset.view === 'evolucion') initEvolucionCharts();
+    if (btn.dataset.view === 'sugerencias') renderSugerencias();
     Object.values(Chart.instances || {}).forEach(ch => ch.resize());
   });
 });
+
+// ===================== SUGERENCIAS =====================
+const SUG_KEY = 'lasnaciones_sugerencias_v1';
+const SUG_VOTOS_KEY = 'lasnaciones_sugerencias_votos_v1';
+
+function sugGetAll() {
+  try { return JSON.parse(localStorage.getItem(SUG_KEY)) || []; } catch(e) { return []; }
+}
+function sugSaveAll(list) { localStorage.setItem(SUG_KEY, JSON.stringify(list)); }
+function sugGetVotos() {
+  try { return JSON.parse(localStorage.getItem(SUG_VOTOS_KEY)) || {}; } catch(e) { return {}; }
+}
+function sugSaveVotos(v) { localStorage.setItem(SUG_VOTOS_KEY, JSON.stringify(v)); }
+function sugNormalizeUnidad(u) { return (u || '').trim().toUpperCase(); }
+function sugEscapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function renderSugerencias() {
+  const lista = sugGetAll();
+  const votos = sugGetVotos();
+  const cont = document.getElementById('sugLista');
+  const vacio = document.getElementById('sugVacio');
+  if (!lista.length) {
+    cont.innerHTML = '';
+    vacio.style.display = 'block';
+    return;
+  }
+  vacio.style.display = 'none';
+
+  const miUnidad = sugNormalizeUnidad(document.getElementById('sugUnidad').value);
+  const netoDe = s => {
+    const v = votos[s.id] || {};
+    return Object.values(v).reduce((sum, x) => sum + x, 0);
+  };
+  const ordenadas = lista.slice().sort((a, b) => netoDe(b) - netoDe(a));
+
+  cont.innerHTML = ordenadas.map(s => {
+    const v = votos[s.id] || {};
+    const arriba = Object.values(v).filter(x => x === 1).length;
+    const abajo = Object.values(v).filter(x => x === -1).length;
+    const neto = arriba - abajo;
+    const miVoto = miUnidad ? (v[miUnidad] || 0) : 0;
+    return `<div style="display:flex; align-items:flex-start; gap:14px; padding:12px; background:#11161d; border:1px solid var(--border); border-radius:8px;">
+      <div style="display:flex; flex-direction:column; align-items:center; gap:2px; min-width:44px;">
+        <button data-sug="${s.id}" data-dir="1" class="sugVoteBtn" style="background:none; border:none; cursor:pointer; color:${miVoto === 1 ? 'var(--green)' : 'var(--muted)'}; font-size:18px; line-height:1;">▲</button>
+        <span style="font-weight:700; font-size:15px;">${neto}</span>
+        <button data-sug="${s.id}" data-dir="-1" class="sugVoteBtn" style="background:none; border:none; cursor:pointer; color:${miVoto === -1 ? 'var(--red)' : 'var(--muted)'}; font-size:18px; line-height:1;">▼</button>
+      </div>
+      <div style="flex:1;">
+        <div style="font-size:14px;">${sugEscapeHtml(s.texto)}</div>
+        <div style="font-size:12px; color:var(--muted); margin-top:4px;">Unidad ${sugEscapeHtml(s.unidad)} · ${new Date(s.fecha).toLocaleDateString('es-AR')} · ${arriba} a favor, ${abajo} en contra</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  document.querySelectorAll('.sugVoteBtn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const unidad = sugNormalizeUnidad(document.getElementById('sugUnidad').value);
+      if (!unidad) {
+        document.getElementById('sugError').textContent = 'Ingresá tu unidad arriba para poder votar.';
+        document.getElementById('sugError').style.display = 'block';
+        return;
+      }
+      const id = btn.dataset.sug;
+      const dir = parseInt(btn.dataset.dir, 10);
+      const votosActuales = sugGetVotos();
+      if (!votosActuales[id]) votosActuales[id] = {};
+      votosActuales[id][unidad] = votosActuales[id][unidad] === dir ? 0 : dir;
+      if (votosActuales[id][unidad] === 0) delete votosActuales[id][unidad];
+      sugSaveVotos(votosActuales);
+      renderSugerencias();
+    });
+  });
+}
+
+document.getElementById('sugEnviar').addEventListener('click', () => {
+  const unidad = sugNormalizeUnidad(document.getElementById('sugUnidad').value);
+  const texto = document.getElementById('sugTexto').value.trim();
+  const err = document.getElementById('sugError');
+  if (!unidad || !texto) {
+    err.textContent = 'Completá tu unidad y el texto de la sugerencia.';
+    err.style.display = 'block';
+    return;
+  }
+  err.style.display = 'none';
+  const lista = sugGetAll();
+  lista.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7), unidad, texto, fecha: Date.now() });
+  sugSaveAll(lista);
+  document.getElementById('sugTexto').value = '';
+  renderSugerencias();
+});
+
+document.getElementById('sugUnidad').addEventListener('input', renderSugerencias);
 
 document.getElementById('search').addEventListener('input', function() {
   const q = this.value.toLowerCase();
