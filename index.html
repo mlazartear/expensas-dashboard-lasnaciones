@@ -198,7 +198,7 @@
       <div class="card"><h3>Gasto por rubro</h3><canvas id="chartRubro" height="240"></canvas></div>
       <div class="card">
         <h3>Detalle por rubro — <span id="gTablaTitulo"></span></h3>
-        <table><thead><tr><th>Rubro</th><th class="num">Monto</th><th class="num">%</th></tr></thead>
+        <table><thead><tr><th>Rubro</th><th>Tipo</th><th class="num">Monto</th><th class="num">%</th></tr></thead>
         <tbody id="tblRubros"></tbody></table>
       </div>
     </div>
@@ -451,9 +451,17 @@ function renderGastos(p) {
     ? 'Los rubros suman exactamente el total oficial de gastos impreso en la liquidación ' + p + '.'
     : 'La liquidación ' + p + ' no registra gastos (fue el período de apertura de la administración).';
 
-  document.getElementById('tblRubros').innerHTML = g.rubros.map(([nombre, monto]) =>
-    `<tr><td>${nombre}</td><td class="num">${fmt(monto)}</td><td class="num">${total ? (monto/total*100).toFixed(2) : '0.00'}%</td></tr>`
-  ).join('') || '<tr><td colspan="3" style="color:var(--muted)">Sin gastos registrados en este período</td></tr>';
+  const rubrosOrdenados = g.rubros.slice().sort((a, b) => {
+    const aVar = a[0] === 'Varios', bVar = b[0] === 'Varios';
+    if (aVar !== bVar) return aVar ? 1 : -1;
+    return b[1] - a[1];
+  });
+  document.getElementById('tblRubros').innerHTML = rubrosOrdenados.map(([nombre, monto]) => {
+    const esVariable = nombre === 'Varios';
+    return `<tr${esVariable ? ' style="font-weight:600; color:var(--orange);"' : ''}>
+      <td>${nombre}</td><td>${esVariable ? 'Variable' : 'Fijo'}</td>
+      <td class="num">${fmt(monto)}</td><td class="num">${total ? (monto/total*100).toFixed(2) : '0.00'}%</td></tr>`;
+  }).join('') || '<tr><td colspan="4" style="color:var(--muted)">Sin gastos registrados en este período</td></tr>';
 
   if (chartRubro) chartRubro.destroy();
   chartRubro = new Chart(document.getElementById('chartRubro'), {
