@@ -181,7 +181,18 @@
       <div class="kpi teal" id="gKpiPersonal"><div class="label">Personal (sueldos + cargas)</div><div class="value">-</div></div>
     </div>
 
+    <div class="kpis" style="margin-top:12px;">
+      <div class="kpi green" id="gKpiFijo"><div class="label">Gastos fijos (todo excepto Varios)</div><div class="value">-</div></div>
+      <div class="kpi orange" id="gKpiVariable"><div class="label">Gastos variables (rubro Varios)</div><div class="value">-</div></div>
+    </div>
+
     <div class="note" id="gNota" style="margin:12px 0 20px;"></div>
+    <div class="note" style="margin:-8px 0 20px;">
+      Nota: "Varios" agrupa por definición los gastos no recurrentes / no encuadrados en otro rubro (reparaciones, compras puntuales,
+      materiales), por eso se toma como el gasto variable del período. El resto de los rubros (Seguridad, Servicios públicos,
+      Abonos de servicios, Seguros, Personal, Administración) son cargos estructurales que se repiten mes a mes, por eso se
+      agrupan como gasto fijo.
+    </div>
 
     <div class="grid2">
       <div class="card"><h3>Gasto por rubro</h3><canvas id="chartRubro" height="240"></canvas></div>
@@ -428,6 +439,12 @@ function renderGastos(p) {
   document.querySelector('#gKpiSeguridad .value').textContent = pct('Seguridad').toFixed(1) + '%';
   document.querySelector('#gKpiVarios .value').textContent = pct('Varios').toFixed(1) + '%';
   document.querySelector('#gKpiPersonal .value').textContent = personal.toFixed(1) + '%';
+
+  const variosMonto = (g.rubros.find(x => x[0] === 'Varios') || [0, 0])[1];
+  const fijoMonto = total - variosMonto;
+  document.querySelector('#gKpiFijo .value').textContent = total ? fmt(fijoMonto) + ' (' + (100 - pct('Varios')).toFixed(1) + '%)' : '-';
+  document.querySelector('#gKpiVariable .value').textContent = total ? fmt(variosMonto) + ' (' + pct('Varios').toFixed(1) + '%)' : '-';
+
   document.getElementById('gTablaTitulo').textContent = 'Liquidación ' + p;
 
   document.getElementById('gNota').textContent = total
