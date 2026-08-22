@@ -543,7 +543,7 @@ function renderVariosChart(p, detalle) {
 function renderCargosTabla(rows) {
   const tbody = document.querySelector('#tblCargos tbody');
   tbody.innerHTML = rows.map(r => {
-    const [mnz, lote, prop, cat, soc, varv, deuda, interes, estado] = r;
+    const [mnz, lote, prop, cat, soc, varv, estado] = r;
     const cargo = cat + soc + varv;
     const badgeColor = estado === 'con_deuda' ? 'var(--red)' : (estado === 'al_dia' ? 'var(--green)' : 'var(--muted)');
     return `<tr><td>${mnz}</td><td>${lote}</td><td>${prop}</td>
