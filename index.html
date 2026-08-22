@@ -193,19 +193,14 @@
     </div>
 
     <div id="detalleProveedores">
-      <h2 class="section">Detalle por proveedor (solo liquidación 8/2026)</h2>
-      <div class="grid2">
-        <div class="card"><h3>Seguridad — detalle por proveedor ($72,4M · 40,5%)</h3><canvas id="chartSeguridad" height="260"></canvas></div>
-        <div class="card"><h3>Varios — detalle completo por proveedor ($73,0M · 40,9%)</h3><canvas id="chartVarios" height="700"></canvas></div>
+      <h2 class="section">Varios — detalle por proveedor</h2>
+      <div class="card">
+        <h3>Varios — desglose por proveedor — <span id="gVariosTitulo"></span></h3>
+        <canvas id="chartVarios" height="500"></canvas>
       </div>
 
       <div class="card">
-        <div class="note">
-          Nota: el desglose por proveedor solo está cargado para la liquidación 8/2026. El detalle de "Varios" agrupa las
-          facturas por proveedor (46 proveedores) y cubre 98% del rubro ($71.717.245 de $73.021.969 oficiales); el 2%
-          restante corresponde a proveedores menores cuyo detalle no se pudo separar de forma confiable por superposición
-          de texto en el PDF original.
-        </div>
+        <div class="note" id="gVariosNota"></div>
       </div>
     </div>
   </div>
@@ -288,7 +283,10 @@ document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
     document.querySelectorAll('.tab-content:not(.etab-content)').forEach(c => c.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
-    if (btn.dataset.tab === 'gastos' && periodoSelect.value === '8/2026') initProveedoresCharts();
+    if (btn.dataset.tab === 'gastos') {
+      const detalle = CARGOS_DATA.variosDetalle && CARGOS_DATA.variosDetalle[periodoSelect.value];
+      if (detalle && detalle.length) renderVariosChart(periodoSelect.value, detalle);
+    }
     // charts created while their tab was hidden get sized to ~0px; fix it up now that it's visible
     Object.values(Chart.instances || {}).forEach(ch => ch.resize());
   });
@@ -449,31 +447,36 @@ function renderGastos(p) {
       tooltip: { callbacks: { label: c => c.label + ': ' + fmt(c.raw) } } } }
   });
 
-  const mostrar = p === '8/2026';
+  const detalle = CARGOS_DATA.variosDetalle && CARGOS_DATA.variosDetalle[p];
+  const mostrar = !!(detalle && detalle.length);
   document.getElementById('detalleProveedores').style.display = mostrar ? '' : 'none';
-  // only build these charts once the Gastos tab is actually visible; a canvas with a
+  // only build the chart once the Gastos tab is actually visible; a canvas with a
   // fully hidden ancestor (display:none two levels up) can't acquire a 2d context yet
   if (mostrar && document.getElementById('tab-gastos').classList.contains('active')) {
-    initProveedoresCharts();
+    renderVariosChart(p, detalle);
   }
 }
 
-let proveedoresCharted = false;
-function initProveedoresCharts() {
-  if (proveedoresCharted) return;
-  new Chart(document.getElementById('chartSeguridad'), {
+let chartVarios = null;
+function renderVariosChart(p, detalle) {
+  const total = detalle.reduce((s, r) => s + r[1], 0);
+  const variosTotal = CARGOS_DATA.gastos[p].rubros.find(r => r[0] === 'Varios')[1];
+  document.getElementById('gVariosTitulo').textContent = 'Liquidaci\u00f3n ' + p + ' (' + detalle.length + ' proveedores)';
+  const pctCubierto = variosTotal ? (total / variosTotal * 100) : 0;
+  const pctRedondeado = pctCubierto.toFixed(0);
+  document.getElementById('gVariosNota').textContent =
+    'Nota: agrupa las facturas del rubro "Varios" por proveedor (' + detalle.length + ' proveedores) y cubre ' +
+    pctRedondeado + '% del rubro (' + fmt(total) + ' de ' + fmt(variosTotal) + ' oficiales)' +
+    (pctRedondeado < 100 ? '; el resto corresponde a proveedores menores cuyo detalle no se pudo separar de forma confiable por superposici\u00f3n de texto en el PDF original.' : '.');
+
+  if (chartVarios) chartVarios.destroy();
+  chartVarios = new Chart(document.getElementById('chartVarios'), {
     type: 'bar',
-    data: { labels: ["MAG Seguridad Privada SRL - Seguridad privada", "Ministerio de Seguridad Prov. Bs As - Seguridad provincial", "Cresmani Andr\u00e9s E. - Cerco el\u00e9ctrico (centrales de alarma)", "Fiberquil SRL - Mantenimiento preventivo", "Axin SRL - Cuota facial acceso Francia", "Ministerio de Seguridad - Diferencia", "Cresmani Andr\u00e9s E. - Cerco el\u00e9ctrico (materiales)", "Fiberquil SRL - C\u00e1mara seguridad", "Cresmani Andr\u00e9s E. - Cerco el\u00e9ctrico (mantenimiento)", "Castillo Jorge Luis - Alarma", "MAG Seguridad Privada SRL - Nota de cr\u00e9dito"], datasets: [{ data: [53096111, 10353456, 3500000, 3431144, 2670472, 856788, 731000, 444092, 365000, 100000, -3105864], backgroundColor: '#3b82f6' }] },
-    options: { indexAxis: 'y', plugins: { legend: { display: false } },
-      scales: { x: { ticks: { callback: v => '$' + (v/1e6).toFixed(1) + 'M' } }, y: { ticks: { font: { size: 10 } } } } }
-  });
-  new Chart(document.getElementById('chartVarios'), {
-    type: 'bar',
-    data: { labels: ["BAJO, CRISTIAN JAVIER - SERVICIO RECOLECCION HOJAS RAMAS Y P", "FERNANDEZ PEDRO - TOYOTA HILUX DOMINIO PCM797", "LEIVA CRISTIAN DAVID - SERVICIO", "IODO VINELLI - CUOTA 6 MUTUO USD 3.000 A $ 1.505", "NAVARRO JUAN CARLOS - SERVICIO", "AMERICA 210 S.A - COMBUSTIBLE Y LUBRICANTES, Pr COMBUSTIBLE ", "RADIO CARRAL, JOSE LUIS - HERRERIA, A CUENTA ARREGLO CARRO..", "PAGELLA DIEGO MARTIN - ALQUILER BRAZO ARTICULADO", "EL SOL SA - CUOTA 6 MOTONIVELADORA USD 1.800 A $ 1.505", "RAYMONDO, EMANUEL - FLETE", "GISSARA, MIGUEL ANGEL - MATERIALES", "HELP 24 HORAS S.R.L - AREA PROTEGIDA", "SALGADO JESICA ELIZABET - HONORARIOS PROFESIONALES", "RUIZ LUCAS AGUSTIN - REPARACION RODADO (3 fact.)", "SIMA CONVAR PARTES PIEZAS Y ACCESORIOS S.R.L - CANON LOCATIV", "COOP DE TRABAJ CARTONEROS UNIDOS DE BROWN - SERVICIO DE RECO", "CARRANZA MARGARITA AMPARO - LEASING CUOTA 7", "MARIANO PITA - REGISTRO AUTOMOTOR SAN VICENTE", "RISCAM SRL - COMBUSTIBLE Y LUBRICANTES", "FERNANDEZ INSUA S.A - RESPUESTOS MAQUINARIA", "PEDROZO MARCELO HUGO - REPARACION MAQUINARIA", "BROWN MARCELA - HONORARIOS PROFESIONALES", "GONZALEZ, FAVIO HERNAN - MATERIALES (2 fact.)", "PARCESEPE JOSE LUIS - VARIOS (4 fact.)", "LYP SRL - RED FUTBOL", "MAGNOLUZ SRL - MATERIALES (2 fact.)", "FIGUEROA, DEBORAH MARIELA - SERVICIO AGUA _ DISPENSER, SERVI", "TESI, MARIO LEANDRO - VARIOS", "GONZALEZ, JORGE OSCAR - REPUESTOS", "FERREIRO NICOLAS HECTOR - BOLSONES", "BRILTI SRL - VOLQUETES (2 fact.)", "CORBALAN AYLEN - SERVICIO", "ZAPOLNISKOF, CECILIA ANALIA - ALQUILER BA\u00d1OS QUIMICOS", "PELOZO JOSE RAMON - FC.00002-00013377, FC.00002-00013305 (2 ", "VIVIANA LUNA - LIMPIEZA ADMINISTRACION", "OSORIO SERGIO DANIEL - CONOS VIALES", "SCHULMEISTER NATALIA ELISABET - MATERIALES (2 fact.)", "RAS SRL - MATERIALES", "GONZALEZ RAMOS WALTER JAVIER - MATERIALES (3 fact.)", "INDRIERI JOSE ROBERTO - MATERIALES", "DISTRIBUIDORA DE RESPUESTOS PESADOS - VARIOS", "GINI MARIA MARTA - HONORARIOS PROFESIONALES", "ROSSI RODAMIENTOS SRL - VARIOS", "ARIAS HERNAN - MATERIALES", "ANDRIUOLO ISMAEL - ARTICULOS DE LIMPIEZA (2 fact.)", "PEREYRA HORACIO - VARIOS"], datasets: [{ data: [16031459, 12170800, 5146500, 4515000, 3427500, 3235097, 2940000, 2750000, 2709000, 2450000, 1611157, 1476550, 965000, 937157, 831600, 774843, 755000, 729540, 711700, 709912, 700000, 600000, 552896, 467400, 390000, 379894, 370000, 350000, 299521, 295000, 290400, 270000, 269093, 266900, 260500, 200000, 190309, 126964, 101210, 98336, 72600, 70000, 62000, 53777, 52629, 50000], backgroundColor: '#f59e0b' }] },
-    options: { indexAxis: 'y', plugins: { legend: { display: false } },
+    data: { labels: detalle.map(r => r[0]), datasets: [{ data: detalle.map(r => r[1]), backgroundColor: '#f59e0b' }] },
+    options: { indexAxis: 'y', plugins: { legend: { display: false },
+      tooltip: { callbacks: { label: c => fmt(c.raw) } } },
       scales: { x: { ticks: { callback: v => '$' + (v/1e6).toFixed(1) + 'M' } }, y: { ticks: { font: { size: 9 } } } } }
   });
-  proveedoresCharted = true;
 }
 
 function renderCargosTabla(rows) {
