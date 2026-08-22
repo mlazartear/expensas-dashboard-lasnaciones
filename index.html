@@ -182,16 +182,18 @@
     </div>
 
     <div class="kpis" style="margin-top:12px;">
-      <div class="kpi green" id="gKpiFijo"><div class="label">Gastos fijos (todo excepto Varios)</div><div class="value">-</div></div>
-      <div class="kpi orange" id="gKpiVariable"><div class="label">Gastos variables (rubro Varios)</div><div class="value">-</div></div>
+      <div class="kpi green" id="gKpiFijo"><div class="label">Gastos fijos (servicios recurrentes)</div><div class="value">-</div></div>
+      <div class="kpi orange" id="gKpiVariable"><div class="label">Gastos variables (facturas puntuales)</div><div class="value">-</div></div>
     </div>
 
     <div class="note" id="gNota" style="margin:12px 0 20px;"></div>
     <div class="note" style="margin:-8px 0 20px;">
-      Nota: "Varios" agrupa por definición los gastos no recurrentes / no encuadrados en otro rubro (reparaciones, compras puntuales,
-      materiales), por eso se toma como el gasto variable del período. El resto de los rubros (Seguridad, Servicios públicos,
-      Abonos de servicios, Seguros, Personal, Administración) son cargos estructurales que se repiten mes a mes, por eso se
-      agrupan como gasto fijo.
+      Nota: los rubros Seguridad, Servicios públicos, Abonos de servicios, Seguros, Personal y Administración son cargos
+      estructurales que se repiten mes a mes, por eso se agrupan como gasto fijo. El rubro "Varios" es el catch-all de AdminProp
+      para lo que no encuadra en otro rubro, pero adentro mezcla proveedores con contrato recurrente (recolección de residuos,
+      combustible, cuotas de leasing/mutuo, honorarios fijos, alquileres) con facturas puntuales (reparaciones, compras de
+      materiales, trabajos únicos). Por eso "Varios" se separa en dos: la porción de proveedores recurrentes se suma al gasto
+      fijo, y solo las facturas puntuales cuentan como gasto variable.
     </div>
 
     <div class="grid2">
@@ -426,6 +428,23 @@ function renderDeudores(p, rows, s) {
 
 /* ---------- GASTOS (por período) ---------- */
 const RUBRO_COLORS = ['#ef4444','#f59e0b','#14b8a6','#3b82f6','#a855f7','#22c55e','#f97316','#64748b'];
+// Proveedores dentro de "Varios" cuyo cargo es en realidad un servicio/contrato
+// recurrente mes a mes (aunque AdminProp lo agrupe en el rubro catch-all "Varios").
+const VARIOS_FIJO_PROVIDERS = new Set([
+  'BAJO, CRISTIAN JAVIER',
+  'AMERICA 210 S.A.',
+  'EL SOL SA',
+  'FIGUEROA, DEBORAH MARIELA',
+  'HELP 24 HORAS S.R.L.',
+  'ZAPOLNISKOF, CECILIA ANALIA',
+  'CARRANZA MARGARITA AMPARO',
+  'COOP DE TRABAJ CARTONEROS UNIDOS DE BROWN',
+  'IODO VINELLI',
+  'LEIVA CRISTIAN DAVID',
+  'NAVARRO JUAN CARLOS',
+  'SALGADO JESICA ELIZABET',
+  'SOCIEDAD DE BOMBEROS VOLUNTARIOS DE GUERNICA',
+]);
 function renderGastos(p) {
   const g = CARGOS_DATA.gastos[p];
   const total = g.total;
@@ -441,9 +460,12 @@ function renderGastos(p) {
   document.querySelector('#gKpiPersonal .value').textContent = personal.toFixed(1) + '%';
 
   const variosMonto = (g.rubros.find(x => x[0] === 'Varios') || [0, 0])[1];
-  const fijoMonto = total - variosMonto;
-  document.querySelector('#gKpiFijo .value').textContent = total ? fmt(fijoMonto) + ' (' + (100 - pct('Varios')).toFixed(1) + '%)' : '-';
-  document.querySelector('#gKpiVariable .value').textContent = total ? fmt(variosMonto) + ' (' + pct('Varios').toFixed(1) + '%)' : '-';
+  const detalleVarios = (CARGOS_DATA.variosDetalle && CARGOS_DATA.variosDetalle[p]) || [];
+  const variosFijoMonto = detalleVarios.filter(([nombre]) => VARIOS_FIJO_PROVIDERS.has(nombre)).reduce((s, r) => s + r[1], 0);
+  const variosVariableMonto = variosMonto - variosFijoMonto;
+  const fijoMonto = (total - variosMonto) + variosFijoMonto;
+  document.querySelector('#gKpiFijo .value').textContent = total ? fmt(fijoMonto) + ' (' + (fijoMonto/total*100).toFixed(1) + '%)' : '-';
+  document.querySelector('#gKpiVariable .value').textContent = total ? fmt(variosVariableMonto) + ' (' + (variosVariableMonto/total*100).toFixed(1) + '%)' : '-';
 
   document.getElementById('gTablaTitulo').textContent = 'Liquidación ' + p;
 
@@ -451,13 +473,22 @@ function renderGastos(p) {
     ? 'Los rubros suman exactamente el total oficial de gastos impreso en la liquidación ' + p + '.'
     : 'La liquidación ' + p + ' no registra gastos (fue el período de apertura de la administración).';
 
-  const rubrosOrdenados = g.rubros.slice().sort((a, b) => {
-    const aVar = a[0] === 'Varios', bVar = b[0] === 'Varios';
+  // reemplaza la fila "Varios" por dos filas: la porción de proveedores recurrentes (Fijo)
+  // y el resto de facturas puntuales (Variable), ambas dentro del mismo rubro oficial
+  const rubrosSplit = g.rubros
+    .filter(([nombre]) => nombre !== 'Varios')
+    .map(([nombre, monto]) => [nombre, monto, 'fijo'])
+    .concat(variosMonto ? [
+      ['Varios — proveedores recurrentes', variosFijoMonto, 'fijo'],
+      ['Varios — facturas puntuales', variosVariableMonto, 'variable'],
+    ] : []);
+  const rubrosOrdenados = rubrosSplit.slice().sort((a, b) => {
+    const aVar = a[2] === 'variable', bVar = b[2] === 'variable';
     if (aVar !== bVar) return aVar ? 1 : -1;
     return b[1] - a[1];
   });
-  document.getElementById('tblRubros').innerHTML = rubrosOrdenados.map(([nombre, monto]) => {
-    const esVariable = nombre === 'Varios';
+  document.getElementById('tblRubros').innerHTML = rubrosOrdenados.map(([nombre, monto, tipo]) => {
+    const esVariable = tipo === 'variable';
     return `<tr${esVariable ? ' style="font-weight:600; color:var(--orange);"' : ''}>
       <td>${nombre}</td><td>${esVariable ? 'Variable' : 'Fijo'}</td>
       <td class="num">${fmt(monto)}</td><td class="num">${total ? (monto/total*100).toFixed(2) : '0.00'}%</td></tr>`;
@@ -466,8 +497,8 @@ function renderGastos(p) {
   if (chartRubro) chartRubro.destroy();
   chartRubro = new Chart(document.getElementById('chartRubro'), {
     type: 'doughnut',
-    data: { labels: g.rubros.map(r => r[0]),
-      datasets: [{ data: g.rubros.map(r => r[1]), backgroundColor: RUBRO_COLORS }] },
+    data: { labels: rubrosOrdenados.map(r => r[0]),
+      datasets: [{ data: rubrosOrdenados.map(r => r[1]), backgroundColor: RUBRO_COLORS.concat(RUBRO_COLORS) }] },
     options: { plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
       tooltip: { callbacks: { label: c => c.label + ': ' + fmt(c.raw) } } } }
   });
@@ -486,18 +517,21 @@ let chartVarios = null;
 function renderVariosChart(p, detalle) {
   const total = detalle.reduce((s, r) => s + r[1], 0);
   const variosTotal = CARGOS_DATA.gastos[p].rubros.find(r => r[0] === 'Varios')[1];
-  document.getElementById('gVariosTitulo').textContent = 'Liquidaci\u00f3n ' + p + ' (' + detalle.length + ' proveedores)';
+  document.getElementById('gVariosTitulo').textContent = 'Liquidaci\u00f3n ' + p + ' (' + detalle.length + ' proveedores \u2014 verde = fijo/recurrente, naranja = variable/puntual)';
   const pctCubierto = variosTotal ? (total / variosTotal * 100) : 0;
   const pctRedondeado = pctCubierto.toFixed(0);
   document.getElementById('gVariosNota').textContent =
     'Nota: agrupa las facturas del rubro "Varios" por proveedor (' + detalle.length + ' proveedores) y cubre ' +
     pctRedondeado + '% del rubro (' + fmt(total) + ' de ' + fmt(variosTotal) + ' oficiales)' +
-    (pctRedondeado < 100 ? '; el resto corresponde a proveedores menores cuyo detalle no se pudo separar de forma confiable por superposici\u00f3n de texto en el PDF original.' : '.');
+    (pctRedondeado < 100 ? '; el resto corresponde a proveedores menores cuyo detalle no se pudo separar de forma confiable por superposici\u00f3n de texto en el PDF original.' : '.') +
+    ' Los proveedores en verde son servicios/contratos recurrentes que se pagan pr\u00e1cticamente todos los meses; el resto (naranja) son facturas puntuales.';
 
   if (chartVarios) chartVarios.destroy();
   chartVarios = new Chart(document.getElementById('chartVarios'), {
     type: 'bar',
-    data: { labels: detalle.map(r => r[0]), datasets: [{ data: detalle.map(r => r[1]), backgroundColor: '#f59e0b' }] },
+    data: { labels: detalle.map(r => r[0]),
+      datasets: [{ data: detalle.map(r => r[1]),
+        backgroundColor: detalle.map(([nombre]) => VARIOS_FIJO_PROVIDERS.has(nombre) ? '#22c55e' : '#f59e0b') }] },
     options: { indexAxis: 'y', plugins: { legend: { display: false },
       tooltip: { callbacks: { label: c => fmt(c.raw) } } },
       scales: { x: { ticks: { callback: v => '$' + (v/1e6).toFixed(1) + 'M' } }, y: { ticks: { font: { size: 9 } } } } }
